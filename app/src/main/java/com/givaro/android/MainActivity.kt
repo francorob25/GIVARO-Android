@@ -2,6 +2,7 @@ package com.givaro.android
 
 import android.Manifest
 import android.content.BroadcastReceiver
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -600,7 +601,7 @@ fun PlayerScreen() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.fillMaxWidth(0.8f)) {
-                                    Text(text = track.title, color = if (isSelected) accentColor else Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                    Text(text = track.title, color = if (isSelected) accentColor else Color.White, fontSize =] 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(text = track.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
                                 }
