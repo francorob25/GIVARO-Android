@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GIVARO-Android"
+rootProject.name = "GIVARO"
 include(":app")
