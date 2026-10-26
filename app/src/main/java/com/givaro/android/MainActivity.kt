@@ -29,7 +29,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-data.class Track(val title: String, val artist: String, val duration: String)
+// Estrutura de dados corrigida (sem o ponto)
+data class Track(val title: String, val artist: String, val duration: String)
 
 @Composable
 fun PlayerScreen() {
@@ -168,5 +169,4 @@ fun PlayerScreen() {
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
-
 
