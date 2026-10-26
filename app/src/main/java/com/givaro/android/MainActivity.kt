@@ -127,10 +127,10 @@ fun PlayerScreen() {
         }
     }
     
-    var currentIndex by remember { IntStateOf(0) }
+    // CORRIGIDO: mudou de IntStateOf para mutableIntStateOf
+    var currentIndex by remember { mutableIntStateOf(0) }
     val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
 
-    // Gestão do MediaPlayer
     LaunchedEffect(currentIndex, isPlaying) {
         if (currentTrack.uri != android.net.Uri.EMPTY) {
             try {
@@ -162,7 +162,6 @@ fun PlayerScreen() {
         }
     }
 
-    // Atualização em tempo real da posição
     LaunchedEffect(isPlaying, currentIndex) {
         while (isPlaying) {
             delay(250L)
@@ -204,7 +203,6 @@ fun PlayerScreen() {
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Topo
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -233,7 +231,6 @@ fun PlayerScreen() {
                     }
                 }
 
-                // Área Central com Gestos (Swipe de Música)
                 var dragAmount by remember { mutableFloatStateOf(0f) }
                 Box(
                     modifier = Modifier
@@ -242,12 +239,10 @@ fun PlayerScreen() {
                             detectHorizontalDragGestures(
                                 onDragEnd = {
                                     if (dragAmount > 50f) {
-                                        // Swipe para a direita -> Música anterior
                                         currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                         currentPositionMs = 0L
                                         isPlaying = true
                                     } else if (dragAmount < -50f) {
-                                        // Swipe para a esquerda -> Próxima música
                                         currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
                                         currentPositionMs = 0L
                                         isPlaying = true
@@ -304,7 +299,6 @@ fun PlayerScreen() {
                     }
                 }
 
-                // Controlos de Progresso e Navegação
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
