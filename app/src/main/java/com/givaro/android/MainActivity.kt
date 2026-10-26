@@ -3,6 +3,7 @@ package com.givaro.android
 import android.Manifest
 import android.content.ContentUris
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -35,14 +36,11 @@ import kotlinx.coroutines.delay
 class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        // Lógica de callback da permissão se necessário
-    }
+    ) { _ -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Pedir permissão de leitura de áudio em runtime
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_AUDIO
         } else {
@@ -56,7 +54,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color(0xFF000000) // Preto absoluto OLED
+                color = Color(0xFF000000)
             ) {
                 PlayerScreen()
             }
@@ -64,7 +62,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-data class Track(val title: String, val artist: String, val durationSec: Int) {
+data class Track(val id: Long, val title: String, val artist: String, val durationSec: Int, val uri: android.net.Uri) {
     val durationFormatted: String
         get() {
             val mins = durationSec / 60
@@ -77,16 +75,19 @@ data class Track(val title: String, val artist: String, val durationSec: Int) {
 fun PlayerScreen() {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("player") } // "player" ou "playlist"
+    var currentScreen by remember { mutableStateOf("player") }
     var currentPositionSec by remember { mutableStateOf(0) }
     var volume by remember { mutableStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
     var isRepeatOn by remember { mutableStateOf(false) }
     
-    // Lista dinâmica carregada do telemóvel (com fallback simulado se não houver músicas)
+    // Instância do MediaPlayer gerida no ciclo de vida do Composable
+    val mediaPlayer = remember { MediaPlayer() }
+
     val playlist = remember {
         val list = mutableListOf<Track>()
         val projection = arrayOf(
+            MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.DURATION
@@ -96,28 +97,29 @@ fun PlayerScreen() {
             projection,
             null,
             null,
-            null
+            MediaStore.Audio.Media.TITLE + " ASC"
         )
         cursor?.use {
-            val titleCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-            val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-            val durationCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            const val ID_COL = 0
+            const val TITLE_COL = 1
+            const val ARTIST_COL = 2
+            const val DURATION_COL = 3
 
             while (it.moveToNext()) {
-                val title = it.getString(titleCol) ?: "Desconhecido"
-                val artist = it.getString(artistCol) ?: "Artista Desconhecido"
-                val durationMs = it.getLong(durationCol)
-                list.add(Track(title, artist, (durationMs / 1000).toInt()))
+                val id = it.getLong(ID_COL)
+                val title = it.getString(TITLE_COL) ?: "Desconhecido"
+                val artist = it.getString(ARTIST_COL) ?: "Artista Desconhecido"
+                val durationMs = it.getLong(DURATION_COL)
+                val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+                list.add(Track(id, title, artist, (durationMs / 1000).toInt(), contentUri))
             }
         }
-        // Se o telemóvel estiver vazio, usa faixas padrão para teste imediato
+        
         if (list.isEmpty()) {
             listOf(
-                Track("Faixa Minimalista", "Givaro Sound", 225),
-                Track("Nocturne in Amber", "Givaro Analog", 252),
-                Track("Electric Echoes", "Subtle Bass", 178),
-                Track("Analog Sunset", "Givaro Sound", 301),
-                Track("Midnight Circuit", "Retro Device", 210)
+                Track(0L, "Faixa Minimalista", "Givaro Sound", 225, android.net.Uri.EMPTY),
+                Track(1L, "Nocturne in Amber", "Givaro Analog", 252, android.net.Uri.EMPTY),
+                Track(2L, "Electric Echoes", "Subtle Bass", 178, android.net.Uri.EMPTY)
             )
         } else {
             list
@@ -127,7 +129,41 @@ fun PlayerScreen() {
     var currentIndex by remember { mutableStateOf(0) }
     val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
 
-    // Simulação do avanço do tempo de reprodução
+    // Gestão do motor de áudio MediaPlayer ao mudar de faixa ou estado Play/Pause
+    LaunchedEffect(currentIndex, isPlaying) {
+        if (currentTrack.uri != android.net.Uri.EMPTY) {
+            try {
+                if (isPlaying) {
+                    if (!mediaPlayer.isPlaying) {
+                        // Se já estiver preparado para a mesma música, apenas faz start
+                        try {
+                            mediaPlayer.start()
+                        } catch (e: Exception) {
+                            mediaPlayer.reset()
+                            mediaPlayer.setDataSource(context, currentTrack.uri)
+                            mediaPlayer.prepare()
+                            mediaPlayer.start()
+                        }
+                    }
+                } else {
+                    if (mediaPlayer.isPlaying) {
+                        mediaPlayer.pause()
+                    }
+                }
+            } catch (e: Exception) {
+                // Fallback seguro caso o ficheiro falhe
+            }
+        }
+    }
+
+    // Libertar recursos do MediaPlayer ao sair
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaPlayer.release()
+        }
+    }
+
+    // Sincronização do progresso do tempo
     LaunchedEffect(isPlaying, currentIndex) {
         while (isPlaying) {
             delay(1000L)
@@ -144,7 +180,6 @@ fun PlayerScreen() {
         }
     }
 
-    // Animação subtil do anel OLED quando a tocar
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -165,7 +200,6 @@ fun PlayerScreen() {
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Topo com Shuffle, Título e Menu Playlist
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -194,7 +228,6 @@ fun PlayerScreen() {
                     }
                 }
 
-                // Capa / Visualizador Central OLED com Anel Animado
                 Box(
                     modifier = Modifier.size(260.dp),
                     contentAlignment = Alignment.Center
@@ -242,7 +275,6 @@ fun PlayerScreen() {
                     }
                 }
 
-                // Controlos de Progresso, Volume e Modos
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -270,166 +302,4 @@ fun PlayerScreen() {
                         val currentMins = currentPositionSec / 60
                         val currentSecs = currentPositionSec % 60
                         Text(text = String.format("%02d:%02d", currentMins, currentSecs), color = Color.Gray, fontSize = 12.sp)
-                        Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 12.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Controlo de Volume compacto
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Vol", color = Color.Gray, fontSize = 12.sp)
-                        Slider(
-                            value = volume,
-                            onValueChange = { volume = it },
-                            modifier = Modifier.fillMaxWidth(0.85f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color.LightGray,
-                                activeTrackColor = Color.LightGray,
-                                inactiveTrackColor = Color(0xFF222222)
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Botões de Navegação completos
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { isRepeatOn = !isRepeatOn }) {
-                            Text(
-                                text = "🔁",
-                                color = if (isRepeatOn) Color(0xFFFF9800) else Color.Gray,
-                                fontSize = 18.sp
-                            )
-                        }
-
-                        Button(
-                            onClick = {
-                                currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
-                                currentPositionSec = 0
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
-                            modifier = Modifier.size(48.dp),
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(text = "⏮", color = Color.White, fontSize = 16.sp)
-                        }
-
-                        Button(
-                            onClick = { isPlaying = !isPlaying },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
-                            modifier = Modifier
-                                .height(52.dp)
-                                .width(120.dp),
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = if (isPlaying) "PAUSA" else "PLAY",
-                                color = Color.Black,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            )
-                        }
-
-                        Button(
-                            onClick = {
-                                currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
-                                currentPositionSec = 0
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
-                            modifier = Modifier.size(48.dp),
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(text = "⏭", color = Color.White, fontSize = 16.sp)
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        } else {
-            // Ecrã da Lista de Músicas (Playlist)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "PLAYLIST (${playlist.size})",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 4.sp
-                    )
-                    IconButton(onClick = { currentScreen = "player" }) {
-                        Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
-                    }
-                }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    itemsIndexed(playlist) { index, track ->
-                        val isSelected = index == currentIndex
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) Color(0xFF1A1A1A) else Color(0xFF0A0A0A))
-                                .clickable {
-                                    currentIndex = index
-                                    isPlaying = true
-                                    currentPositionSec = 0
-                                    currentScreen = "player"
-                                }
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.fillMaxWidth(0.8f)) {
-                                Text(
-                                    text = track.title,
-                                    color = if (isSelected) Color(0xFFFF9800) else Color.White,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = track.artist,
-                                    color = Color.Gray,
-                                    fontSize = 12.sp,
-                                    maxLines = 1
-                                )
-                            }
-                            Text(
-                                text = track.durationFormatted,
-                                color = Color.Gray,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+                        Text(text = currentTrack.duration
