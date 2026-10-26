@@ -6,10 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,19 +14,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.givaro.android.ui.theme.GivaroTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            GivaroTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF121212) // Fundo preto elegante estilo high-end
-                ) {
-                    PlayerScreen()
-                }
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color(0xFF121212)
+            ) {
+                PlayerScreen()
             }
         }
     }
@@ -47,7 +40,7 @@ fun PlayerScreen() {
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Cabeçalho Minimalista
+        // Título Minimalista
         Text(
             text = "GIVARO",
             color = Color.LightGray,
@@ -57,7 +50,7 @@ fun PlayerScreen() {
             modifier = Modifier.padding(top = 16.dp)
         )
 
-        // Capa / Visualizador Central (Espaço Minimalista)
+        // Visualizador / Capa Central
         Box(
             modifier = Modifier
                 .size(260.dp)
@@ -86,12 +79,11 @@ fun PlayerScreen() {
             }
         }
 
-        // Controlos e Barra de Progresso
+        // Controlos e Botão de Play
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Barra de Progresso Simples
             Slider(
                 value = 0.35f,
                 onValueChange = {},
@@ -102,54 +94,21 @@ fun PlayerScreen() {
                 )
             )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = "01:24", color = Color.Gray, fontSize = 12.sp)
-                Text(text = "03:45", color = Color.Gray, fontSize = 12.sp)
-            }
-
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botões de Play/Pause e Navegação
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+            // Botão Principal de Play/Pause em Texto/Forma segura
+            Button(
+                onClick = { isPlaying = !isPlaying },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                modifier = Modifier.height(50.dp).width(160.dp),
+                shape = CircleShape
             ) {
-                IconButton(onClick = { }) {
-                    Icon(
-                        imageVector = Icons.Default.SkipPrevious,
-                        contentDescription = "Anterior",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-
-                FloatingActionButton(
-                    onClick = { isPlaying = !isPlaying },
-                    containerColor = Color(0xFFFF9800),
-                    contentColor = Color.Black,
-                    shape = CircleShape
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause",
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-
-                IconButton(onClick = { }) {
-                    Icon(
-                        imageVector = Icons.Default.SkipNext,
-                        contentDescription = "Seguinte",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
+                Text(
+                    text = if (isPlaying) "PAUSA" else "PLAY",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
+                )
             }
         }
         
