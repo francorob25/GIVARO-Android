@@ -1,8 +1,14 @@
 package com.givaro.android
 
+import android.Manifest
+import android.content.ContentUris
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -19,14 +25,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        // Lógica de callback da permissão se necessário
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Pedir permissão de leitura de áudio em runtime
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissionLauncher.launch(permission)
+        }
+
         setContent {
             Surface(
                 modifier = Modifier.fillMaxSize(),
@@ -49,25 +75,59 @@ data class Track(val title: String, val artist: String, val durationSec: Int) {
 
 @Composable
 fun PlayerScreen() {
+    val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
     var currentScreen by remember { mutableStateOf("player") } // "player" ou "playlist"
-    var currentPositionSec by remember { mutableStateOf(45) } // progresso em segundos
+    var currentPositionSec by remember { mutableStateOf(0) }
     var volume by remember { mutableStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
     var isRepeatOn by remember { mutableStateOf(false) }
     
-    val playlist = listOf(
-        Track("Faixa Minimalista", "Givaro Sound", 225),
-        Track("Nocturne in Amber", "Givaro Analog", 252),
-        Track("Electric Echoes", "Subtle Bass", 178),
-        Track("Analog Sunset", "Givaro Sound", 301),
-        Track("Midnight Circuit", "Retro Device", 210)
-    )
+    // Lista dinâmica carregada do telemóvel (com fallback simulado se não houver músicas)
+    val playlist = remember {
+        val list = mutableListOf<Track>()
+        val projection = arrayOf(
+            MediaStore.Audio.Media.TITLE,
+            MediaStore.Audio.Media.ARTIST,
+            MediaStore.Audio.Media.DURATION
+        )
+        val cursor = context.contentResolver.query(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            null
+        )
+        cursor?.use {
+            val titleCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            val durationCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+
+            while (it.moveToNext()) {
+                val title = it.getString(titleCol) ?: "Desconhecido"
+                val artist = it.getString(artistCol) ?: "Artista Desconhecido"
+                val durationMs = it.getLong(durationCol)
+                list.add(Track(title, artist, (durationMs / 1000).toInt()))
+            }
+        }
+        // Se o telemóvel estiver vazio, usa faixas padrão para teste imediato
+        if (list.isEmpty()) {
+            listOf(
+                Track("Faixa Minimalista", "Givaro Sound", 225),
+                Track("Nocturne in Amber", "Givaro Analog", 252),
+                Track("Electric Echoes", "Subtle Bass", 178),
+                Track("Analog Sunset", "Givaro Sound", 301),
+                Track("Midnight Circuit", "Retro Device", 210)
+            )
+        } else {
+            list
+        }
+    }
     
     var currentIndex by remember { mutableStateOf(0) }
-    val currentTrack = playlist[currentIndex]
+    val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
 
-    // Simulação do avanço do tempo de reprodução quando ativo
+    // Simulação do avanço do tempo de reprodução
     LaunchedEffect(isPlaying, currentIndex) {
         while (isPlaying) {
             delay(1000L)
@@ -136,11 +196,9 @@ fun PlayerScreen() {
 
                 // Capa / Visualizador Central OLED com Anel Animado
                 Box(
-                    modifier = Modifier
-                        .size(260.dp),
+                    modifier = Modifier.size(260.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Anel exterior decorativo em âmbar subtil
                     Canvas(modifier = Modifier.size(250.dp * pulseScale)) {
                         drawCircle(
                             color = if (isPlaying) Color(0xFFFF9800).copy(alpha = 0.3f) else Color(0xFF1A1A1A),
@@ -154,7 +212,10 @@ fun PlayerScreen() {
                             .background(Color(0xFF0A0A0A), shape = CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
                             Text(
                                 text = if (isPlaying) "A REPRODUZIR" else "PAUSADO",
                                 color = Color(0xFFFF9800),
@@ -166,14 +227,16 @@ fun PlayerScreen() {
                             Text(
                                 text = currentTrack.title,
                                 color = Color.White,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = currentTrack.artist,
                                 color = Color.Gray,
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                maxLines = 1
                             )
                         }
                     }
@@ -310,7 +373,7 @@ fun PlayerScreen() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "PLAYLIST",
+                        text = "PLAYLIST (${playlist.size})",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
@@ -342,18 +405,20 @@ fun PlayerScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.fillMaxWidth(0.8f)) {
                                 Text(
                                     text = track.title,
                                     color = if (isSelected) Color(0xFFFF9800) else Color.White,
                                     fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = track.artist,
                                     color = Color.Gray,
-                                    fontSize = 12.sp
+                                    fontSize = 12.sp,
+                                    maxLines = 1
                                 )
                             }
                             Text(
