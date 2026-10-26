@@ -81,7 +81,6 @@ fun PlayerScreen() {
     var isShuffleOn by remember { mutableStateOf(false) }
     var isRepeatOn by remember { mutableStateOf(false) }
     
-    // Instância do MediaPlayer gerida no ciclo de vida do Composable
     val mediaPlayer = remember { MediaPlayer() }
 
     val playlist = remember {
@@ -100,16 +99,16 @@ fun PlayerScreen() {
             MediaStore.Audio.Media.TITLE + " ASC"
         )
         cursor?.use {
-            const val ID_COL = 0
-            const val TITLE_COL = 1
-            const val ARTIST_COL = 2
-            const val DURATION_COL = 3
+            val idCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val titleCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            val durationCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
 
             while (it.moveToNext()) {
-                val id = it.getLong(ID_COL)
-                val title = it.getString(TITLE_COL) ?: "Desconhecido"
-                val artist = it.getString(ARTIST_COL) ?: "Artista Desconhecido"
-                val durationMs = it.getLong(DURATION_COL)
+                val id = it.getLong(idCol)
+                val title = it.getString(titleCol) ?: "Desconhecido"
+                val artist = it.getString(artistCol) ?: "Artista Desconhecido"
+                val durationMs = it.getLong(durationCol)
                 val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
                 list.add(Track(id, title, artist, (durationMs / 1000).toInt(), contentUri))
             }
@@ -129,13 +128,11 @@ fun PlayerScreen() {
     var currentIndex by remember { mutableStateOf(0) }
     val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
 
-    // Gestão do motor de áudio MediaPlayer ao mudar de faixa ou estado Play/Pause
     LaunchedEffect(currentIndex, isPlaying) {
         if (currentTrack.uri != android.net.Uri.EMPTY) {
             try {
                 if (isPlaying) {
                     if (!mediaPlayer.isPlaying) {
-                        // Se já estiver preparado para a mesma música, apenas faz start
                         try {
                             mediaPlayer.start()
                         } catch (e: Exception) {
@@ -151,19 +148,17 @@ fun PlayerScreen() {
                     }
                 }
             } catch (e: Exception) {
-                // Fallback seguro caso o ficheiro falhe
+                // Ignorar erro de formato se houver falha
             }
         }
     }
 
-    // Libertar recursos do MediaPlayer ao sair
     DisposableEffect(Unit) {
         onDispose {
             mediaPlayer.release()
         }
     }
 
-    // Sincronização do progresso do tempo
     LaunchedEffect(isPlaying, currentIndex) {
         while (isPlaying) {
             delay(1000L)
@@ -215,12 +210,13 @@ fun PlayerScreen() {
                         )
                     }
                     
+                    // Tipografia GIVARO refinada com espaçamento elegante e estilo Hi-Fi
                     Text(
-                        text = "GIVARO",
-                        color = Color.LightGray,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 6.sp
+                        text = "G I V A R O",
+                        color = Color(0xFFDDDDDD),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Light,
+                        letterSpacing = 8.sp
                     )
                     
                     IconButton(onClick = { currentScreen = "playlist" }) {
@@ -302,4 +298,168 @@ fun PlayerScreen() {
                         val currentMins = currentPositionSec / 60
                         val currentSecs = currentPositionSec % 60
                         Text(text = String.format("%02d:%02d", currentMins, currentSecs), color = Color.Gray, fontSize = 12.sp)
-                        Text(text = currentTrack.duration
+                        Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 12.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = "Vol", color = Color.Gray, fontSize = 12.sp)
+                        Slider(
+                            value = volume,
+                            onValueChange = { 
+                                volume = it
+                                mediaPlayer.setVolume(volume, volume)
+                            },
+                            modifier = Modifier.fillMaxWidth(0.85f),
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.LightGray,
+                                activeTrackColor = Color.LightGray,
+                                inactiveTrackColor = Color(0xFF222222)
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { isRepeatOn = !isRepeatOn }) {
+                            Text(
+                                text = "🔁",
+                                color = if (isRepeatOn) Color(0xFFFF9800) else Color.Gray,
+                                fontSize = 18.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
+                                currentPositionSec = 0
+                                isPlaying = true
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(text = "⏮", color = Color.White, fontSize = 16.sp)
+                        }
+
+                        Button(
+                            onClick = { isPlaying = !isPlaying },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                            modifier = Modifier
+                                .height(52.dp)
+                                .width(120.dp),
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                text = if (isPlaying) "PAUSA" else "PLAY",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
+                                currentPositionSec = 0
+                                isPlaying = true
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(text = "⏭", color = Color.White, fontSize = 16.sp)
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, bottom = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "PLAYLIST (${playlist.size})",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 4.sp
+                    )
+                    IconButton(onClick = { currentScreen = "player" }) {
+                        Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    itemsIndexed(playlist) { index, track ->
+                        val isSelected = index == currentIndex
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) Color(0xFF1A1A1A) else Color(0xFF0A0A0A))
+                                .clickable {
+                                    currentIndex = index
+                                    isPlaying = true
+                                    currentPositionSec = 0
+                                    currentScreen = "player"
+                                }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth(0.8f)) {
+                                Text(
+                                    text = track.title,
+                                    color = if (isSelected) Color(0xFFFF9800) else Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = track.artist,
+                                    color = Color.Gray,
+                                    fontSize = 12.sp,
+                                    maxLines = 1
+                                )
+                            }
+                            Text(
+                                text = track.durationFormatted,
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
