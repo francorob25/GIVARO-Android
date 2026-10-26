@@ -120,7 +120,7 @@ fun WalkmanScreen(onVoiceCommandClick: () -> Unit) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterAlignment
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "WALKMAN",
