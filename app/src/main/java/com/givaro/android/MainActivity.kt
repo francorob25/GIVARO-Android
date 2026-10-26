@@ -1,4 +1,4 @@
- package com.givaro.android
+package com.givaro.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color(0xFF000000) // Preto absoluto (True Black) OLED
+                color = Color(0xFF000000) // Preto absoluto OLED
             ) {
                 PlayerScreen()
             }
@@ -29,9 +29,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+data.class Track(val title: String, val artist: String, val duration: String)
+
 @Composable
 fun PlayerScreen() {
     var isPlaying by remember { mutableStateOf(false) }
+    
+    // Lista de músicas simulada para o nosso leitor Walkman
+    val playlist = listOf(
+        Track("Faixa Minimalista", "Givaro Sound", "03:45"),
+        Track("Nocturne in Amber", "Givaro Analog", "04:12"),
+        Track("Electric Echoes", "Subtle Bass", "02:58")
+    )
+    
+    var currentIndex by remember { mutableStateOf(0) }
+    val currentTrack = playlist[currentIndex]
 
     Column(
         modifier = Modifier
@@ -50,7 +62,7 @@ fun PlayerScreen() {
             modifier = Modifier.padding(top = 16.dp)
         )
 
-        // Visualizador / Capa Central
+        // Visualizador / Capa Central Dinâmica
         Box(
             modifier = Modifier
                 .size(260.dp)
@@ -66,20 +78,20 @@ fun PlayerScreen() {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Faixa Minimalista",
+                    text = currentTrack.title,
                     color = Color.White,
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Givaro Sound",
+                    text = currentTrack.artist,
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
             }
         }
 
-        // Controlos e Botão de Play
+        // Controlos e Barra de Progresso
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -94,25 +106,67 @@ fun PlayerScreen() {
                 )
             )
 
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = "01:24", color = Color.Gray, fontSize = 12.sp)
+                Text(text = currentTrack.duration, color = Color.Gray, fontSize = 12.sp)
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botão Principal de Play/Pause
-            Button(
-                onClick = { isPlaying = !isPlaying },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
-                modifier = Modifier.height(50.dp).width(160.dp),
-                shape = CircleShape
+            // Botões de Navegação (Anterior, Play/Pause, Seguinte)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (isPlaying) "PAUSA" else "PLAY",
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp
-                )
+                // Botão Anterior
+                Button(
+                    onClick = {
+                        currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222)),
+                    modifier = Modifier.height(45.dp),
+                    shape = CircleShape
+                ) {
+                    Text(text = "◄", color = Color.White)
+                }
+
+                // Botão Principal Play/Pause
+                Button(
+                    onClick = { isPlaying = !isPlaying },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                    modifier = Modifier.height(50.dp).width(130.dp),
+                    shape = CircleShape
+                ) {
+                    Text(
+                        text = if (isPlaying) "PAUSA" else "PLAY",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
+                }
+
+                // Botão Seguinte
+                Button(
+                    onClick = {
+                        currentIndex = (currentIndex + 1) % playlist.size
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222)),
+                    modifier = Modifier.height(45.dp),
+                    shape = CircleShape
+                ) {
+                    Text(text = "►", color = Color.White)
+                }
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
 
