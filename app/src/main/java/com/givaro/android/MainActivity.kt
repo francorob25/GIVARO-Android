@@ -86,13 +86,14 @@ data class Track(
 fun PlayerScreen() {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("player") } // "player", "playlist", "equalizer"
+    var currentScreen by remember { mutableStateOf("player") } // "player", "playlist", "equalizer", "favorites", "info"
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
     var isRepeatOn by remember { mutableStateOf(false) }
     
-    // Equalizador e Efeitos
+    var favoriteTrackIds = remember { mutableStateOf(setOf<Long>()) }
+
     var selectedPreset by remember { mutableIntStateOf(0) }
     val presets = listOf("Flat", "Bass Boost", "Clarity", "Hi-Res Audio", "Vocal")
 
@@ -146,8 +147,8 @@ fun PlayerScreen() {
     
     var currentIndex by remember { mutableIntStateOf(0) }
     val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
+    val isCurrentFavorite = favoriteTrackIds.value.contains(currentTrack.id)
 
-    // Obter imagem do álbum real do dispositivo
     val albumArtBitmap = remember(currentTrack.albumId) {
         try {
             val albumUri = ContentUris.withAppendedId(
@@ -173,8 +174,8 @@ fun PlayerScreen() {
                             mediaPlayer.setDataSource(context, currentTrack.uri)
                             mediaPlayer.prepare()
                             mediaPlayer.start()
+                            mediaPlayer.setVolume(volume, volume)
                             
-                            // Inicializar Equalizador nativo se disponível
                             try {
                                 if (equalizer == null) {
                                     equalizer = Equalizer(0, mediaPlayer.audioSessionId).apply {
@@ -233,7 +234,7 @@ fun PlayerScreen() {
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Topo Walkman com Acesso ao Equalizador (EQ) e Playlist
+                    // Topo Walkman
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -241,14 +242,20 @@ fun PlayerScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextButton(onClick = { currentScreen = "equalizer" }) {
-                            Text(
-                                text = "EQ",
-                                color = Color(0xFFFF9800),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { currentScreen = "equalizer" }) {
+                                Text(
+                                    text = "EQ",
+                                    color = Color(0xFFFF9800),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            TextButton(onClick = { currentScreen = "favorites" }) {
+                                Text(text = "⭐", fontSize = 14.sp)
+                            }
                         }
                         
                         Text(
@@ -264,12 +271,12 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Área Central com Capa do Álbum Estilo Walkman Sony
+                    // Capa Central com Swipe
                     var dragAmount by remember { mutableFloatStateOf(0f) }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(300.dp)
+                            .height(260.dp)
                             .pointerInput(Unit) {
                                 detectHorizontalDragGestures(
                                     onDragEnd = {
@@ -293,9 +300,10 @@ fun PlayerScreen() {
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(260.dp)
+                                .size(240.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFF111111)),
+                                .background(Color(0xFF111111))
+                                .clickable { currentScreen = "info" },
                             contentAlignment = Alignment.Center
                         ) {
                             if (albumArtBitmap != null) {
@@ -317,22 +325,22 @@ fun PlayerScreen() {
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 3.sp
                                     )
-                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Spacer(modifier = Modifier.height(18.dp))
                                     Text(
                                         text = currentTrack.title,
                                         color = Color.White,
-                                        fontSize = 18.sp,
+                                        fontSize = 16.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1
                                     )
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
                                         text = currentTrack.artist,
                                         color = Color.Gray,
-                                        fontSize = 13.sp,
+                                        fontSize = 12.sp,
                                         maxLines = 1
                                     )
-                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Spacer(modifier = Modifier.height(18.dp))
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(4.dp))
@@ -351,7 +359,7 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Detalhes da Faixa, Barra de Progresso e Controlos de Som
+                    // Controlo de Volume Integrado, Progresso e Botões
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -363,7 +371,7 @@ fun PlayerScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.fillMaxWidth(0.8f)) {
+                            Column(modifier = Modifier.fillMaxWidth(0.75f)) {
                                 Text(
                                     text = currentTrack.title,
                                     color = Color.White,
@@ -379,15 +387,26 @@ fun PlayerScreen() {
                                     maxLines = 1
                                 )
                             }
-                            Text(
-                                text = presets[selectedPreset],
-                                color = Color(0xFFFF9800),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            
+                            IconButton(
+                                onClick = {
+                                    val currentSet = favoriteTrackIds.value.toMutableSet()
+                                    if (isCurrentFavorite) {
+                                        currentSet.remove(currentTrack.id)
+                                    } else {
+                                        currentSet.add(currentTrack.id)
+                                    }
+                                    favoriteTrackIds.value = currentSet
+                                }
+                            ) {
+                                Text(
+                                    text = if (isCurrentFavorite) "⭐" else "☆",
+                                    fontSize = 20.sp
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         val totalMs = currentTrack.durationSec * 1000L
                         val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
@@ -423,9 +442,33 @@ fun PlayerScreen() {
                             Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 11.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        // Slider de Volume Rápido
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = "VOL", color = Color.DarkGray, fontSize = 9.sp, letterSpacing = 2.sp)
+                            Slider(
+                                value = volume,
+                                onValueChange = { 
+                                    volume = it
+                                    mediaPlayer.setVolume(volume, volume)
+                                },
+                                modifier = Modifier.fillMaxWidth(0.9f),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = Color.LightGray,
+                                    activeTrackColor = Color.LightGray,
+                                    inactiveTrackColor = Color(0xFF222222)
+                                )
+                            )
+                        }
 
-                        // Controlos de Transporte do Sony Walkman
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Controlos de Transporte
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -446,20 +489,20 @@ fun PlayerScreen() {
                                     isPlaying = true
                                 }
                             ) {
-                                Text(text = "⏮", color = Color.White, fontSize = 24.sp)
+                                Text(text = "⏮", color = Color.White, fontSize = 22.sp)
                             }
 
                             Button(
                                 onClick = { isPlaying = !isPlaying },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
-                                modifier = Modifier.size(64.dp),
-                                shape = RoundedCornerShape(32.dp),
+                                modifier = Modifier.size(56.dp),
+                                shape = RoundedCornerShape(28.dp),
                                 contentPadding = PaddingValues(0.dp)
                             ) {
                                 Text(
                                     text = if (isPlaying) "⏸" else "▶",
                                     color = Color.Black,
-                                    fontSize = 22.sp,
+                                    fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -471,7 +514,7 @@ fun PlayerScreen() {
                                     isPlaying = true
                                 }
                             ) {
-                                Text(text = "⏭", color = Color.White, fontSize = 24.sp)
+                                Text(text = "⏭", color = Color.White, fontSize = 22.sp)
                             }
 
                             IconButton(onClick = { isShuffleOn = !isShuffleOn }) {
@@ -483,12 +526,66 @@ fun PlayerScreen() {
                             }
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+            "info" -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "AUDIO METADATA",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 4.sp
+                        )
+                        IconButton(onClick = { currentScreen = "player" }) {
+                            Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF111111))
+                                .padding(20.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(text = "Título: ${currentTrack.title}", color = Color.White, fontSize = 14.sp)
+                                Text(text = "Artista: ${currentTrack.artist}", color = Color.Gray, fontSize = 13.sp)
+                                Text(text = "Duração: ${currentTrack.durationFormatted}", color = Color.Gray, fontSize = 13.sp)
+                                Text(text = "Qualidade: 192 kHz / 24-bit Lossless", color = Color(0xFFFF9800), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "ID do Sistema: ${currentTrack.id}", color = Color.DarkGray, fontSize = 11.sp)
+                            }
+                        }
+                    }
+
+                    Button(
+                        onClick = { currentScreen = "player" },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text(text = "VOLTAR AO PLAYER", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
             "equalizer" -> {
-                // Ecrã do Equalizador Estilo Hi-Fi
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -513,14 +610,6 @@ fun PlayerScreen() {
                         }
                     }
 
-                    Text(
-                        text = "PRESETS",
-                        color = Color.Gray,
-                        fontSize = 12.sp,
-                        letterSpacing = 2.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
                     presets.forEachIndexed { index, name ->
                         val isSelected = index == selectedPreset
                         Row(
@@ -529,9 +618,7 @@ fun PlayerScreen() {
                                 .padding(vertical = 6.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(if (isSelected) Color(0xFF151515) else Color(0xFF070707))
-                                .clickable {
-                                    selectedPreset = index
-                                }
+                                .clickable { selectedPreset = index }
                                 .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -549,8 +636,95 @@ fun PlayerScreen() {
                     }
                 }
             }
+            "favorites" -> {
+                val favoriteTracks = playlist.filter { favoriteTrackIds.value.contains(it.id) }
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, bottom = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "FAVORITOS (${favoriteTracks.size})",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 4.sp
+                        )
+                        IconButton(onClick = { currentScreen = "player" }) {
+                            Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                        }
+                    }
+
+                    if (favoriteTracks.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Nenhuma música favorita ainda.\nToque na estrela no ecrã principal.",
+                                color = Color.Gray,
+                                fontSize = 13.sp
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            itemsIndexed(favoriteTracks) { _, track ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color(0xFF070707))
+                                        .clickable {
+                                            val originalIndex = playlist.indexOf(track)
+                                            if (originalIndex != -1) {
+                                                currentIndex = originalIndex
+                                                isPlaying = true
+                                                currentPositionMs = 0L
+                                                currentScreen = "player"
+                                            }
+                                        }
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth(0.8f)) {
+                                        Text(
+                                            text = track.title,
+                                            color = Color(0xFFFF9800),
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = track.artist,
+                                            color = Color.Gray,
+                                            fontSize = 11.sp,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Text(
+                                        text = track.durationFormatted,
+                                        color = Color.Gray,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             "playlist" -> {
-                // Ecrã da Playlist
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
