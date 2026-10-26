@@ -15,7 +15,7 @@ jobs:
           
       - name: Create Gradle Wrapper
         run: |
-          gradle wrapper --gradle-version 8.4
+          gradle wrapper --gradle-version 8.2 --distribution-type bin
           
       - name: Make gradlew executable
         run: chmod +x ./gradlew
