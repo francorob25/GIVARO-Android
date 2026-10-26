@@ -1,4 +1,3 @@
-
 package com.givaro.android
 
 import android.Manifest
