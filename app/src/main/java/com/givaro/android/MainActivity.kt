@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color(0xFF000000) // Preto absoluto OLED
+                color = Color(0xFF000000)
             ) {
                 PlayerScreen()
             }
@@ -29,14 +29,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Estrutura de dados corrigida (sem o ponto)
 data class Track(val title: String, val artist: String, val duration: String)
 
 @Composable
 fun PlayerScreen() {
     var isPlaying by remember { mutableStateOf(false) }
     
-    // Lista de músicas simulada para o nosso leitor Walkman
     val playlist = listOf(
         Track("Faixa Minimalista", "Givaro Sound", "03:45"),
         Track("Nocturne in Amber", "Givaro Analog", "04:12"),
@@ -53,37 +51,39 @@ fun PlayerScreen() {
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Título Minimalista
+        // Título Minimalista no Topo
         Text(
             text = "GIVARO",
             color = Color.LightGray,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            letterSpacing = 4.sp,
+            letterSpacing = 6.sp,
             modifier = Modifier.padding(top = 16.dp)
         )
 
-        // Visualizador / Capa Central Dinâmica
+        // Capa / Visualizador Central OLED
         Box(
             modifier = Modifier
-                .size(260.dp)
-                .background(Color(0xFF1A1A1A), shape = CircleShape),
+                .size(280.dp)
+                .background(Color(0xFF0D0D0D), shape = CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = if (isPlaying) "A Reproduzir" else "Pausado",
+                    text = if (isPlaying) "A REPRODUZIR" else "PAUSADO",
                     color = Color(0xFFFF9800),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = currentTrack.title,
                     color = Color.White,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = currentTrack.artist,
                     color = Color.Gray,
@@ -92,7 +92,7 @@ fun PlayerScreen() {
             }
         }
 
-        // Controlos e Barra de Progresso
+        // Seção de Controlo de Progresso e Botões
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -103,45 +103,46 @@ fun PlayerScreen() {
                 colors = SliderDefaults.colors(
                     thumbColor = Color(0xFFFF9800),
                     activeTrackColor = Color(0xFFFF9800),
-                    inactiveTrackColor = Color(0xFF333333)
+                    inactiveTrackColor = Color(0xFF222222)
                 )
             )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(text = "01:24", color = Color.Gray, fontSize = 12.sp)
                 Text(text = currentTrack.duration, color = Color.Gray, fontSize = 12.sp)
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Botões de Navegação (Anterior, Play/Pause, Seguinte)
+            // Botões de Navegação e Play/Pause
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Botão Anterior
                 Button(
                     onClick = {
                         currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222)),
-                    modifier = Modifier.height(45.dp),
-                    shape = CircleShape
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
+                    modifier = Modifier.size(56.dp),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Text(text = "◄", color = Color.White)
+                    Text(text = "⏮", color = Color.White, fontSize = 16.sp)
                 }
 
-                // Botão Principal Play/Pause
                 Button(
                     onClick = { isPlaying = !isPlaying },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
-                    modifier = Modifier.height(50.dp).width(130.dp),
+                    modifier = Modifier
+                        .height(56.dp)
+                        .width(140.dp),
                     shape = CircleShape
                 ) {
                     Text(
@@ -152,16 +153,16 @@ fun PlayerScreen() {
                     )
                 }
 
-                // Botão Seguinte
                 Button(
                     onClick = {
                         currentIndex = (currentIndex + 1) % playlist.size
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222)),
-                    modifier = Modifier.height(45.dp),
-                    shape = CircleShape
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
+                    modifier = Modifier.size(56.dp),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Text(text = "►", color = Color.White)
+                    Text(text = "⏭", color = Color.White, fontSize = 16.sp)
                 }
             }
         }
@@ -169,4 +170,3 @@ fun PlayerScreen() {
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
-
