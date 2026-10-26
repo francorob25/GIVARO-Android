@@ -3,7 +3,9 @@ package com.givaro.android
 import android.Manifest
 import android.content.ContentUris
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.media.MediaPlayer
+import android.media.audiofx.Equalizer
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -11,14 +13,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,8 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,7 +66,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-data class Track(val id: Long, val title: String, val artist: String, val durationSec: Int, val uri: android.net.Uri) {
+data class Track(
+    val id: Long,
+    val albumId: Long,
+    val title: String,
+    val artist: String,
+    val durationSec: Int,
+    val uri: android.net.Uri
+) {
     val durationFormatted: String
         get() {
             val mins = durationSec / 60
@@ -77,18 +86,24 @@ data class Track(val id: Long, val title: String, val artist: String, val durati
 fun PlayerScreen() {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("player") }
+    var currentScreen by remember { mutableStateOf("player") } // "player", "playlist", "equalizer"
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
     var isRepeatOn by remember { mutableStateOf(false) }
     
+    // Equalizador e Efeitos
+    var selectedPreset by remember { mutableIntStateOf(0) }
+    val presets = listOf("Flat", "Bass Boost", "Clarity", "Hi-Res Audio", "Vocal")
+
     val mediaPlayer = remember { MediaPlayer() }
+    var equalizer by remember { mutableStateOf<Equalizer?>(null) }
 
     val playlist = remember {
         val list = mutableListOf<Track>()
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.DURATION
@@ -102,34 +117,49 @@ fun PlayerScreen() {
         )
         cursor?.use {
             val idCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val albumIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val titleCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
             val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val durationCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
 
             while (it.moveToNext()) {
                 val id = it.getLong(idCol)
+                val albumId = it.getLong(albumIdCol)
                 val title = it.getString(titleCol) ?: "Desconhecido"
                 val artist = it.getString(artistCol) ?: "Artista Desconhecido"
                 val durationMs = it.getLong(durationCol)
                 val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-                list.add(Track(id, title, artist, (durationMs / 1000).toInt(), contentUri))
+                list.add(Track(id, albumId, title, artist, (durationMs / 1000).toInt(), contentUri))
             }
         }
         
         if (list.isEmpty()) {
             listOf(
-                Track(0L, "Faixa Minimalista", "Givaro Sound", 225, android.net.Uri.EMPTY),
-                Track(1L, "Nocturne in Amber", "Givaro Analog", 252, android.net.Uri.EMPTY),
-                Track(2L, "Electric Echoes", "Subtle Bass", 178, android.net.Uri.EMPTY)
+                Track(0L, 0L, "Faixa Minimalista", "Givaro Sound", 225, android.net.Uri.EMPTY),
+                Track(1L, 0L, "Nocturne in Amber", "Givaro Analog", 252, android.net.Uri.EMPTY),
+                Track(2L, 0L, "Electric Echoes", "Subtle Bass", 178, android.net.Uri.EMPTY)
             )
         } else {
             list
         }
     }
     
-    // CORRIGIDO: mudou de IntStateOf para mutableIntStateOf
     var currentIndex by remember { mutableIntStateOf(0) }
     val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
+
+    // Obter imagem do álbum real do dispositivo
+    val albumArtBitmap = remember(currentTrack.albumId) {
+        try {
+            val albumUri = ContentUris.withAppendedId(
+                android.net.Uri.parse("content://media/external/audio/albumart"),
+                currentTrack.albumId
+            )
+            val inputStream = context.contentResolver.openInputStream(albumUri)
+            BitmapFactory.decodeStream(inputStream)?.asImageBitmap()
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     LaunchedEffect(currentIndex, isPlaying) {
         if (currentTrack.uri != android.net.Uri.EMPTY) {
@@ -143,6 +173,15 @@ fun PlayerScreen() {
                             mediaPlayer.setDataSource(context, currentTrack.uri)
                             mediaPlayer.prepare()
                             mediaPlayer.start()
+                            
+                            // Inicializar Equalizador nativo se disponível
+                            try {
+                                if (equalizer == null) {
+                                    equalizer = Equalizer(0, mediaPlayer.audioSessionId).apply {
+                                        enabled = true
+                                    }
+                                }
+                            } catch (eqEx: Exception) {}
                         }
                     }
                 } else {
@@ -150,15 +189,16 @@ fun PlayerScreen() {
                         mediaPlayer.pause()
                     }
                 }
-            } catch (e: Exception) {
-                // Tratamento silencioso
-            }
+            } catch (e: Exception) {}
         }
     }
 
     DisposableEffect(Unit) {
         onDispose {
-            mediaPlayer.release()
+            try {
+                equalizer?.release()
+                mediaPlayer.release()
+            } catch (e: Exception) {}
         }
     }
 
@@ -183,315 +223,401 @@ fun PlayerScreen() {
         }
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.98f,
-        targetValue = if (isPlaying) 1.04f else 0.98f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-
     Box(modifier = Modifier.fillMaxSize()) {
-        if (currentScreen == "player") {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { isShuffleOn = !isShuffleOn }) {
-                        Text(
-                            text = "🔀",
-                            color = if (isShuffleOn) Color(0xFFFF9800) else Color.Gray,
-                            fontSize = 18.sp
-                        )
-                    }
-                    
-                    Text(
-                        text = "G I V A R O",
-                        color = Color(0xFFDDDDDD),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Light,
-                        letterSpacing = 8.sp
-                    )
-                    
-                    IconButton(onClick = { currentScreen = "playlist" }) {
-                        Text(text = "☰", color = Color(0xFFFF9800), fontSize = 20.sp)
-                    }
-                }
-
-                var dragAmount by remember { mutableFloatStateOf(0f) }
-                Box(
-                    modifier = Modifier
-                        .size(260.dp)
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    if (dragAmount > 50f) {
-                                        currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
-                                        currentPositionMs = 0L
-                                        isPlaying = true
-                                    } else if (dragAmount < -50f) {
-                                        currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
-                                        currentPositionMs = 0L
-                                        isPlaying = true
-                                    }
-                                    dragAmount = 0f
-                                },
-                                onHorizontalDrag = { _, delta ->
-                                    dragAmount += delta
-                                }
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Canvas(modifier = Modifier.size(250.dp * pulseScale)) {
-                        drawCircle(
-                            color = if (isPlaying) Color(0xFFFF9800).copy(alpha = 0.35f) else Color(0xFF1A1A1A),
-                            style = Stroke(width = 2.dp.toPx())
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(220.dp)
-                            .background(Color(0xFF0A0A0A), shape = CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            Text(
-                                text = if (isPlaying) "A REPRODUZIR" else "PAUSADO",
-                                color = Color(0xFFFF9800),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = currentTrack.title,
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = currentTrack.artist,
-                                color = Color.Gray,
-                                fontSize = 12.sp,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-
+        when (currentScreen) {
+            "player" -> {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    val totalMs = currentTrack.durationSec * 1000L
-                    val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
-                    
-                    Slider(
-                        value = progressFraction,
-                        onValueChange = { newFraction ->
-                            val targetMs = (newFraction * totalMs).toLong()
-                            currentPositionMs = targetMs
-                            if (currentTrack.uri != android.net.Uri.EMPTY) {
-                                try {
-                                    mediaPlayer.seekTo(targetMs.toInt())
-                                } catch (e: Exception) {}
-                            }
-                        },
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFFFF9800),
-                            activeTrackColor = Color(0xFFFF9800),
-                            inactiveTrackColor = Color(0xFF222222)
-                        )
-                    )
-
+                    // Topo Walkman com Acesso ao Equalizador (EQ) e Playlist
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        val currentSecsTotal = (currentPositionMs / 1000).toInt()
-                        val currentMins = currentSecsTotal / 60
-                        val currentSecs = currentSecsTotal % 60
-                        Text(text = String.format("%02d:%02d", currentMins, currentSecs), color = Color.Gray, fontSize = 12.sp)
-                        Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 12.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Vol", color = Color.Gray, fontSize = 12.sp)
-                        Slider(
-                            value = volume,
-                            onValueChange = { 
-                                volume = it
-                                mediaPlayer.setVolume(volume, volume)
-                            },
-                            modifier = Modifier.fillMaxWidth(0.85f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color.LightGray,
-                                activeTrackColor = Color.LightGray,
-                                inactiveTrackColor = Color(0xFF222222)
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                            .padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { isRepeatOn = !isRepeatOn }) {
+                        TextButton(onClick = { currentScreen = "equalizer" }) {
                             Text(
-                                text = "🔁",
-                                color = if (isRepeatOn) Color(0xFFFF9800) else Color.Gray,
-                                fontSize = 18.sp
-                            )
-                        }
-
-                        Button(
-                            onClick = {
-                                currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
-                                currentPositionMs = 0L
-                                isPlaying = true
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
-                            modifier = Modifier.size(48.dp),
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(text = "⏮", color = Color.White, fontSize = 16.sp)
-                        }
-
-                        Button(
-                            onClick = { isPlaying = !isPlaying },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
-                            modifier = Modifier
-                                .height(52.dp)
-                                .width(120.dp),
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = if (isPlaying) "PAUSA" else "PLAY",
-                                color = Color.Black,
+                                text = "EQ",
+                                color = Color(0xFFFF9800),
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp
                             )
                         }
-
-                        Button(
-                            onClick = {
-                                currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
-                                currentPositionMs = 0L
-                                isPlaying = true
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
-                            modifier = Modifier.size(48.dp),
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(text = "⏭", color = Color.White, fontSize = 16.sp)
+                        
+                        Text(
+                            text = "G I V A R O",
+                            color = Color.LightGray,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Light,
+                            letterSpacing = 8.sp
+                        )
+                        
+                        IconButton(onClick = { currentScreen = "playlist" }) {
+                            Text(text = "☰", color = Color(0xFFFF9800), fontSize = 20.sp)
                         }
                     }
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "PLAYLIST (${playlist.size})",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 4.sp
-                    )
-                    IconButton(onClick = { currentScreen = "player" }) {
-                        Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
-                    }
-                }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    itemsIndexed(playlist) { index, track ->
-                        val isSelected = index == currentIndex
+                    // Área Central com Capa do Álbum Estilo Walkman Sony
+                    var dragAmount by remember { mutableFloatStateOf(0f) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures(
+                                    onDragEnd = {
+                                        if (dragAmount > 50f) {
+                                            currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
+                                            currentPositionMs = 0L
+                                            isPlaying = true
+                                        } else if (dragAmount < -50f) {
+                                            currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
+                                            currentPositionMs = 0L
+                                            isPlaying = true
+                                        }
+                                        dragAmount = 0f
+                                    },
+                                    onHorizontalDrag = { _, delta ->
+                                        dragAmount += delta
+                                    }
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(260.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF111111)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (albumArtBitmap != null) {
+                                Image(
+                                    bitmap = albumArtBitmap,
+                                    contentDescription = "Album Art",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(20.dp)
+                                ) {
+                                    Text(
+                                        text = if (isPlaying) "HI-RES AUDIO" else "PAUSED",
+                                        color = Color(0xFFFF9800),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 3.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Text(
+                                        text = currentTrack.title,
+                                        color = Color.White,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = currentTrack.artist,
+                                        color = Color.Gray,
+                                        fontSize = 13.sp,
+                                        maxLines = 1
+                                    )
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(Color(0xFF222222))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "FLAC 192 kHz / 24-bit",
+                                            color = Color(0xFFFF9800).copy(alpha = 0.8f),
+                                            fontSize = 9.sp,
+                                            letterSpacing = 1.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Detalhes da Faixa, Barra de Progresso e Controlos de Som
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) Color(0xFF1A1A1A) else Color(0xFF0A0A0A))
-                                .clickable {
-                                    currentIndex = index
-                                    isPlaying = true
-                                    currentPositionMs = 0L
-                                    currentScreen = "player"
-                                }
-                                .padding(16.dp),
+                                .padding(horizontal = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.fillMaxWidth(0.8f)) {
                                 Text(
-                                    text = track.title,
-                                    color = if (isSelected) Color(0xFFFF9800) else Color.White,
-                                    fontSize = 16.sp,
+                                    text = currentTrack.title,
+                                    color = Color.White,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
                                     maxLines = 1
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = track.artist,
+                                    text = currentTrack.artist,
                                     color = Color.Gray,
                                     fontSize = 12.sp,
                                     maxLines = 1
                                 )
                             }
                             Text(
-                                text = track.durationFormatted,
-                                color = Color.Gray,
-                                fontSize = 12.sp
+                                text = presets[selectedPreset],
+                                color = Color(0xFFFF9800),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        val totalMs = currentTrack.durationSec * 1000L
+                        val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
+                        
+                        Slider(
+                            value = progressFraction,
+                            onValueChange = { newFraction ->
+                                val targetMs = (newFraction * totalMs).toLong()
+                                currentPositionMs = targetMs
+                                if (currentTrack.uri != android.net.Uri.EMPTY) {
+                                    try {
+                                        mediaPlayer.seekTo(targetMs.toInt())
+                                    } catch (e: Exception) {}
+                                }
+                            },
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color(0xFFFF9800),
+                                activeTrackColor = Color(0xFFFF9800),
+                                inactiveTrackColor = Color(0xFF222222)
+                            )
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            val currentSecsTotal = (currentPositionMs / 1000).toInt()
+                            val currentMins = currentSecsTotal / 60
+                            val currentSecs = currentSecsTotal % 60
+                            Text(text = String.format("%02d:%02d", currentMins, currentSecs), color = Color.Gray, fontSize = 11.sp)
+                            Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 11.sp)
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Controlos de Transporte do Sony Walkman
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { isRepeatOn = !isRepeatOn }) {
+                                Text(
+                                    text = "🔁",
+                                    color = if (isRepeatOn) Color(0xFFFF9800) else Color.DarkGray,
+                                    fontSize = 18.sp
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
+                                    currentPositionMs = 0L
+                                    isPlaying = true
+                                }
+                            ) {
+                                Text(text = "⏮", color = Color.White, fontSize = 24.sp)
+                            }
+
+                            Button(
+                                onClick = { isPlaying = !isPlaying },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                                modifier = Modifier.size(64.dp),
+                                shape = RoundedCornerShape(32.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(
+                                    text = if (isPlaying) "⏸" else "▶",
+                                    color = Color.Black,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
+                                    currentPositionMs = 0L
+                                    isPlaying = true
+                                }
+                            ) {
+                                Text(text = "⏭", color = Color.White, fontSize = 24.sp)
+                            }
+
+                            IconButton(onClick = { isShuffleOn = !isShuffleOn }) {
+                                Text(
+                                    text = "🔀",
+                                    color = if (isShuffleOn) Color(0xFFFF9800) else Color.DarkGray,
+                                    fontSize = 18.sp
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+            "equalizer" -> {
+                // Ecrã do Equalizador Estilo Hi-Fi
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, bottom = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "AUDIO EQUALIZER",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 4.sp
+                        )
+                        IconButton(onClick = { currentScreen = "player" }) {
+                            Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                        }
+                    }
+
+                    Text(
+                        text = "PRESETS",
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        letterSpacing = 2.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    presets.forEachIndexed { index, name ->
+                        val isSelected = index == selectedPreset
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) Color(0xFF151515) else Color(0xFF070707))
+                                .clickable {
+                                    selectedPreset = index
+                                }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = name,
+                                color = if (isSelected) Color(0xFFFF9800) else Color.White,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            if (isSelected) {
+                                Text(text = "●", color = Color(0xFFFF9800), fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            "playlist" -> {
+                // Ecrã da Playlist
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, bottom = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "PLAYLIST (${playlist.size})",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 4.sp
+                        )
+                        IconButton(onClick = { currentScreen = "player" }) {
+                            Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                        }
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        itemsIndexed(playlist) { index, track ->
+                            val isSelected = index == currentIndex
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) Color(0xFF151515) else Color(0xFF070707))
+                                    .clickable {
+                                        currentIndex = index
+                                        isPlaying = true
+                                        currentPositionMs = 0L
+                                        currentScreen = "player"
+                                    }
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth(0.8f)) {
+                                    Text(
+                                        text = track.title,
+                                        color = if (isSelected) Color(0xFFFF9800) else Color.White,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = track.artist,
+                                        color = Color.Gray,
+                                        fontSize = 11.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                                Text(
+                                    text = track.durationFormatted,
+                                    color = Color.Gray,
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
                     }
                 }
