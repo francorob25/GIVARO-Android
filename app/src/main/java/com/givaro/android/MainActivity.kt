@@ -42,6 +42,8 @@ fun PlayerScreen() {
     var currentScreen by remember { mutableStateOf("player") } // "player" ou "playlist"
     var progress by remember { mutableStateOf(0.35f) }
     var volume by remember { mutableStateOf(0.7f) }
+    var isShuffleOn by remember { mutableStateOf(false) }
+    var isRepeatOn by remember { mutableStateOf(false) }
     
     val playlist = listOf(
         Track("Faixa Minimalista", "Givaro Sound", "03:45"),
@@ -63,7 +65,7 @@ fun PlayerScreen() {
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Topo com o menu da playlist
+                // Topo com menu da playlist e estados Shuffle/Repeat
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -71,7 +73,14 @@ fun PlayerScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Spacer(modifier = Modifier.width(32.dp))
+                    IconButton(onClick = { isShuffleOn = !isShuffleOn }) {
+                        Text(
+                            text = "🔀",
+                            color = if (isShuffleOn) Color(0xFFFF9800) else Color.Gray,
+                            fontSize = 18.sp
+                        )
+                    }
+                    
                     Text(
                         text = "GIVARO",
                         color = Color.LightGray,
@@ -79,6 +88,7 @@ fun PlayerScreen() {
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 6.sp
                     )
+                    
                     IconButton(onClick = { currentScreen = "playlist" }) {
                         Text(text = "☰", color = Color(0xFFFF9800), fontSize = 20.sp)
                     }
@@ -87,7 +97,7 @@ fun PlayerScreen() {
                 // Capa / Visualizador Central OLED
                 Box(
                     modifier = Modifier
-                        .size(260.dp)
+                        .size(250.dp)
                         .background(Color(0xFF0A0A0A), shape = CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -115,7 +125,7 @@ fun PlayerScreen() {
                     }
                 }
 
-                // Controlos de Progresso e Volume
+                // Controlos de Progreso, Volume e Modos
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -140,7 +150,7 @@ fun PlayerScreen() {
                         Text(text = currentTrack.duration, color = Color.Gray, fontSize = 12.sp)
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Controlo de Volume compacto
                     Row(
@@ -154,7 +164,7 @@ fun PlayerScreen() {
                         Slider(
                             value = volume,
                             onValueChange = { volume = it },
-                            modifier = Modifier.fillMaxWidth(0.85.dp.value / 1f), // Ajuste de largura
+                            modifier = Modifier.fillMaxWidth(0.85f),
                             colors = SliderDefaults.colors(
                                 thumbColor = Color.LightGray,
                                 activeTrackColor = Color.LightGray,
@@ -163,21 +173,30 @@ fun PlayerScreen() {
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    // Botões de Navegação e Play/Pause
+                    // Botões de Navegação (Anterior, Play/Pause, Seguinte) + Repetir
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Botão Repetir
+                        IconButton(onClick = { isRepeatOn = !isRepeatOn }) {
+                            Text(
+                                text = "🔁",
+                                color = if (isRepeatOn) Color(0xFFFF9800) else Color.Gray,
+                                fontSize = 18.sp
+                            )
+                        }
+
                         Button(
                             onClick = {
                                 currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                 progress = 0f
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
-                            modifier = Modifier.size(52.dp),
+                            modifier = Modifier.size(48.dp),
                             shape = CircleShape,
                             contentPadding = PaddingValues(0.dp)
                         ) {
@@ -189,7 +208,7 @@ fun PlayerScreen() {
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
                             modifier = Modifier
                                 .height(52.dp)
-                                .width(130.dp),
+                                .width(120.dp),
                             shape = CircleShape
                         ) {
                             Text(
@@ -202,11 +221,15 @@ fun PlayerScreen() {
 
                         Button(
                             onClick = {
-                                currentIndex = (currentIndex + 1) % playlist.size
+                                currentIndex = if (isShuffleOn) {
+                                    playlist.indices.random()
+                                } else {
+                                    (currentIndex + 1) % playlist.size
+                                }
                                 progress = 0f
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
-                            modifier = Modifier.size(52.dp),
+                            modifier = Modifier.size(48.dp),
                             shape = CircleShape,
                             contentPadding = PaddingValues(0.dp)
                         ) {
@@ -215,7 +238,7 @@ fun PlayerScreen() {
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
         } else {
             // Ecrã da Lista de Músicas (Playlist)
