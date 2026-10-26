@@ -40,27 +40,38 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Ativa o Modo Não Perturbe ao entrar no app
-        enableDoNotDisturbMode()
+        // Verificação segura para evitar crash se a permissão não estiver concedida
+        try {
+            checkAndEnableDoNotDisturb()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         setContent {
             GivaroWalkmanTheme {
                 WalkmanScreen(
-                    onVoiceCommandClick = { startVoiceRecognition() }
+                    onVoiceCommandClick = { startVoiceRecognition() },
+                    onToggleDoNotDisturb = { requestDoNotDisturbPermission() }
                 )
             }
         }
     }
 
-    private fun enableDoNotDisturbMode() {
+    private fun checkAndEnableDoNotDisturb() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (notificationManager.isNotificationPolicyAccessGranted) {
             notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
-            Toast.makeText(this, "Modo Foco (Não Perturbe) Ativado", Toast.LENGTH_SHORT).show()
-        } else {
-            // Pede permissão para alterar o Não Perturbe se ainda não tiver
+        }
+    }
+
+    private fun requestDoNotDisturbPermission() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!notificationManager.isNotificationPolicyAccessGranted) {
             val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
             startActivity(intent)
+            Toast.makeText(this, "Por favor, permita o acesso ao Não Perturbe", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(this, "Modo Foco já está ativo!", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -105,7 +116,10 @@ fun GivaroWalkmanTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun WalkmanScreen(onVoiceCommandClick: () -> Unit) {
+fun WalkmanScreen(
+    onVoiceCommandClick: () -> Unit,
+    onToggleDoNotDisturb: () -> Unit
+) {
     var isPlaying by remember { mutableStateOf(false) }
 
     Column(
@@ -130,7 +144,8 @@ fun WalkmanScreen(onVoiceCommandClick: () -> Unit) {
             )
             Surface(
                 color = Color(0xFF2C2C2C),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.clickable { onToggleDoNotDisturb() }
             ) {
                 Text(
                     text = "HQ DIRECT • FOCO",
@@ -228,3 +243,5 @@ fun WalkmanScreen(onVoiceCommandClick: () -> Unit) {
         }
     }
 }
+
+    
