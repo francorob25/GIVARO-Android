@@ -90,9 +90,8 @@ fun PlayerScreen() {
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
-    
-    // 0: Desligado, 1: Repetir Todos, 2: Repetir Faixa Única
-    var repeatMode by remember { mutableIntStateOf(0) }
+    var repeatMode by remember { mutableIntStateOf(0) } // 0: Off, 1: All, 2: One
+    var searchQuery by remember { mutableStateOf("") }
     
     var favoriteTrackIds = remember { mutableStateOf(setOf<Long>()) }
 
@@ -175,6 +174,7 @@ fun PlayerScreen() {
                             mediaPlayer.reset()
                             mediaPlayer.setDataSource(context, currentTrack.uri)
                             mediaPlayer.prepare()
+                            mediaPlayer.seekTo(currentPositionMs.toInt())
                             mediaPlayer.start()
                             mediaPlayer.setVolume(volume, volume)
                             
@@ -218,8 +218,9 @@ fun PlayerScreen() {
             if (totalMs > 0 && currentPositionMs >= totalMs) {
                 currentPositionMs = 0L
                 when (repeatMode) {
-                    2 -> { // Repetir apenas esta faixa
+                    2 -> {
                         mediaPlayer.seekTo(0)
+                        mediaPlayer.start()
                     }
                     else -> {
                         currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
@@ -239,7 +240,7 @@ fun PlayerScreen() {
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Topo Walkman Sofisticado
+                    // Topo Walkman Hi-Fi
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -248,21 +249,21 @@ fun PlayerScreen() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { currentScreen = "equalizer" }) {
+                            TextButton(onClick = { currentScreen = "equalizer" }, contentPadding = PaddingValues(4.dp)) {
                                 Text(
                                     text = "EQ",
                                     color = Color(0xFFFF9800),
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 2.sp
                                 )
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            TextButton(onClick = { currentScreen = "favorites" }) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            TextButton(onClick = { currentScreen = "favorites" }, contentPadding = PaddingValues(4.dp)) {
                                 Text(
                                     text = "FAV",
                                     color = Color.Gray,
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 2.sp
                                 )
@@ -287,7 +288,7 @@ fun PlayerScreen() {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(260.dp)
+                            .height(250.dp)
                             .pointerInput(Unit) {
                                 detectHorizontalDragGestures(
                                     onDragEnd = {
@@ -302,18 +303,16 @@ fun PlayerScreen() {
                                         }
                                         dragAmount = 0f
                                     },
-                                    onHorizontalDrag = { _, delta ->
-                                        dragAmount += delta
-                                    }
+                                    onHorizontalDrag = { _, delta -> dragAmount += delta }
                                 )
                             },
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(240.dp)
+                                .size(230.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFF111111))
+                                .background(Color(0xFF0D0D0D))
                                 .clickable { currentScreen = "info" },
                             contentAlignment = Alignment.Center
                         ) {
@@ -336,26 +335,26 @@ fun PlayerScreen() {
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 3.sp
                                     )
-                                    Spacer(modifier = Modifier.height(18.dp))
+                                    Spacer(modifier = Modifier.height(16.dp))
                                     Text(
                                         text = currentTrack.title,
                                         color = Color.White,
-                                        fontSize = 16.sp,
+                                        fontSize = 15.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1
                                     )
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = currentTrack.artist,
                                         color = Color.Gray,
                                         fontSize = 12.sp,
                                         maxLines = 1
                                     )
-                                    Spacer(modifier = Modifier.height(18.dp))
+                                    Spacer(modifier = Modifier.height(16.dp))
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(4.dp))
-                                            .background(Color(0xFF222222))
+                                            .background(Color(0xFF1A1A1A))
                                             .padding(horizontal = 8.dp, vertical = 4.dp)
                                     ) {
                                         Text(
@@ -370,7 +369,7 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Detalhes, Favorito e Controlo de Volume
+                    // Controlo de Progresso, Volume e Transporte Estilo Sony
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -378,7 +377,7 @@ fun PlayerScreen() {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp),
+                                .padding(horizontal = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -402,11 +401,8 @@ fun PlayerScreen() {
                             IconButton(
                                 onClick = {
                                     val currentSet = favoriteTrackIds.value.toMutableSet()
-                                    if (isCurrentFavorite) {
-                                        currentSet.remove(currentTrack.id)
-                                    } else {
-                                        currentSet.add(currentTrack.id)
-                                    }
+                                    if (isCurrentFavorite) currentSet.remove(currentTrack.id)
+                                    else currentSet.add(currentTrack.id)
                                     favoriteTrackIds.value = currentSet
                                 }
                             ) {
@@ -418,7 +414,7 @@ fun PlayerScreen() {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
 
                         val totalMs = currentTrack.durationSec * 1000L
                         val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
@@ -429,15 +425,13 @@ fun PlayerScreen() {
                                 val targetMs = (newFraction * totalMs).toLong()
                                 currentPositionMs = targetMs
                                 if (currentTrack.uri != android.net.Uri.EMPTY) {
-                                    try {
-                                        mediaPlayer.seekTo(targetMs.toInt())
-                                    } catch (e: Exception) {}
+                                    try { mediaPlayer.seekTo(targetMs.toInt()) } catch (e: Exception) {}
                                 }
                             },
                             colors = SliderDefaults.colors(
                                 thumbColor = Color(0xFFFF9800),
                                 activeTrackColor = Color(0xFFFF9800),
-                                inactiveTrackColor = Color(0xFF222222)
+                                inactiveTrackColor = Color(0xFF1C1C1C)
                             )
                         )
 
@@ -448,13 +442,11 @@ fun PlayerScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             val currentSecsTotal = (currentPositionMs / 1000).toInt()
-                            val currentMins = currentSecsTotal / 60
-                            val currentSecs = currentSecsTotal % 60
-                            Text(text = String.format("%02d:%02d", currentMins, currentSecs), color = Color.Gray, fontSize = 11.sp)
+                            Text(text = String.format("%02d:%02d", currentSecsTotal / 60, currentSecsTotal % 60), color = Color.Gray, fontSize = 11.sp)
                             Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 11.sp)
                         }
 
-                        // Slider de Volume
+                        // Slider de Volume Minimalista
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -471,30 +463,32 @@ fun PlayerScreen() {
                                 },
                                 modifier = Modifier.fillMaxWidth(0.92f),
                                 colors = SliderDefaults.colors(
-                                    thumbColor = Color(0xFFFF9800).copy(alpha = 0.8f),
-                                    activeTrackColor = Color(0xFFFF9800).copy(alpha = 0.6f),
-                                    inactiveTrackColor = Color(0xFF1B1B1B)
+                                    thumbColor = Color(0xFFFF9800).copy(alpha = 0.7f),
+                                    activeTrackColor = Color(0xFFFF9800).copy(alpha = 0.5f),
+                                    inactiveTrackColor = Color(0xFF141414)
                                 )
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                        // Controlos de Transporte com Ciclo de Repeat Inteligente
+                        // Controlos de Transporte Clean / Line-Art
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { repeatMode = (repeatMode + 1) % 3 }) {
+                            IconButton(
+                                onClick = { repeatMode = (repeatMode + 1) % 3 },
+                                modifier = Modifier.size(36.dp)
+                            ) {
                                 Text(
-                                    text = when(repeatMode) {
-                                        2 -> "🔂"
-                                        1 -> "🔁"
-                                        else -> "🔁"
-                                    },
+                                    text = if (repeatMode == 2) "1" else "∞",
                                     color = if (repeatMode > 0) Color(0xFFFF9800) else Color.DarkGray,
-                                    fontSize = 18.sp
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
 
@@ -503,22 +497,24 @@ fun PlayerScreen() {
                                     currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                     currentPositionMs = 0L
                                     isPlaying = true
-                                }
+                                },
+                                modifier = Modifier.size(44.dp)
                             ) {
-                                Text(text = "⏮", color = Color.White, fontSize = 22.sp)
+                                Text(text = "◀◀", color = Color.LightGray, fontSize = 14.sp)
                             }
 
-                            Button(
-                                onClick = { isPlaying = !isPlaying },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
-                                modifier = Modifier.size(56.dp),
-                                shape = RoundedCornerShape(28.dp),
-                                contentPadding = PaddingValues(0.dp)
+                            Box(
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(RoundedCornerShape(27.dp))
+                                    .background(Color(0xFFFF9800))
+                                    .clickable { isPlaying = !isPlaying },
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = if (isPlaying) "⏸" else "▶",
+                                    text = if (isPlaying) "❚❚" else "▶",
                                     color = Color.Black,
-                                    fontSize = 20.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -528,16 +524,21 @@ fun PlayerScreen() {
                                     currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
                                     currentPositionMs = 0L
                                     isPlaying = true
-                                }
+                                },
+                                modifier = Modifier.size(44.dp)
                             ) {
-                                Text(text = "⏭", color = Color.White, fontSize = 22.sp)
+                                Text(text = "▶▶", color = Color.LightGray, fontSize = 14.sp)
                             }
 
-                            IconButton(onClick = { isShuffleOn = !isShuffleOn }) {
+                            IconButton(
+                                onClick = { isShuffleOn = !isShuffleOn },
+                                modifier = Modifier.size(36.dp)
+                            ) {
                                 Text(
-                                    text = "🔀",
+                                    text = "⤮",
                                     color = if (isShuffleOn) Color(0xFFFF9800) else Color.DarkGray,
-                                    fontSize = 18.sp
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
@@ -570,24 +571,19 @@ fun PlayerScreen() {
                         }
                     }
 
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF0D0D0D))
+                            .padding(20.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF111111))
-                                .padding(20.dp)
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(text = "Título: ${currentTrack.title}", color = Color.White, fontSize = 14.sp)
-                                Text(text = "Artista: ${currentTrack.artist}", color = Color.Gray, fontSize = 13.sp)
-                                Text(text = "Duração: ${currentTrack.durationFormatted}", color = Color.Gray, fontSize = 13.sp)
-                                Text(text = "Qualidade: 192 kHz / 24-bit Lossless", color = Color(0xFFFF9800), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                Text(text = "ID do Sistema: ${currentTrack.id}", color = Color.DarkGray, fontSize = 11.sp)
-                            }
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(text = "Título: ${currentTrack.title}", color = Color.White, fontSize = 14.sp)
+                            Text(text = "Artista: ${currentTrack.artist}", color = Color.Gray, fontSize = 13.sp)
+                            Text(text = "Duração: ${currentTrack.durationFormatted}", color = Color.Gray, fontSize = 13.sp)
+                            Text(text = "Qualidade: 192 kHz / 24-bit Lossless", color = Color(0xFFFF9800), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "ID do Sistema: ${currentTrack.id}", color = Color.DarkGray, fontSize = 11.sp)
                         }
                     }
 
@@ -684,7 +680,7 @@ fun PlayerScreen() {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Nenhuma música favorita ainda.\nToque no ícone de favorito na faixa.",
+                                text = "Nenhuma música favorita ainda.\nToque no ícone do coração na faixa.",
                                 color = Color.Gray,
                                 fontSize = 13.sp
                             )
@@ -741,6 +737,11 @@ fun PlayerScreen() {
                 }
             }
             "playlist" -> {
+                val filteredPlaylist = playlist.filter { 
+                    it.title.contains(searchQuery, ignoreCase = true) || 
+                    it.artist.contains(searchQuery, ignoreCase = true) 
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -749,12 +750,12 @@ fun PlayerScreen() {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp, bottom = 24.dp),
+                            .padding(top = 16.dp, bottom = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "PLAYLIST (${playlist.size} FAIXAS)",
+                            text = "PLAYLIST (${filteredPlaylist.size})",
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -765,19 +766,39 @@ fun PlayerScreen() {
                         }
                     }
 
+                    // Campo de Pesquisa Minimalista
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        placeholder = { Text("Pesquisar música ou artista...", color = Color.DarkGray, fontSize = 13.sp) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFF9800),
+                            unfocusedBorderColor = Color(0xFF222222),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color(0xFFFF9800)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        itemsIndexed(playlist) { index, track ->
-                            val isSelected = index == currentIndex
+                        itemsIndexed(filteredPlaylist) { _, track ->
+                            val originalIndex = playlist.indexOf(track)
+                            val isSelected = originalIndex == currentIndex
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(if (isSelected) Color(0xFF151515) else Color(0xFF070707))
                                     .clickable {
-                                        currentIndex = index
+                                        currentIndex = originalIndex
                                         isPlaying = true
                                         currentPositionMs = 0L
                                         currentScreen = "player"
