@@ -41,9 +41,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Verificação segura para evitar crash se a permissão não estiver concedida
+        // Proteção total contra crashes no arranque
         try {
-            checkAndEnableDoNotDisturb()
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (notificationManager.isNotificationPolicyAccessGranted) {
+                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -58,31 +61,32 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkAndEnableDoNotDisturb() {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (notificationManager.isNotificationPolicyAccessGranted) {
-            notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
-        }
-    }
-
     private fun requestDoNotDisturbPermission() {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!notificationManager.isNotificationPolicyAccessGranted) {
-            val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-            startActivity(intent)
-            Toast.makeText(this, "Por favor, permita o acesso ao Não Perturbe", Toast.LENGTH_LONG).show()
-        } else {
-            Toast.makeText(this, "Modo Foco já está ativo!", Toast.LENGTH_SHORT).show()
+        try {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (!notificationManager.isNotificationPolicyAccessGranted) {
+                val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                startActivity(intent)
+                Toast.makeText(this, "Permita o acesso ao Não Perturbe", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "Modo Foco já está ativo!", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao abrir configurações", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun startVoiceRecognition() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale um comando (ex: 'Seguinte', 'Anterior', 'Pausar')")
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale um comando")
+            }
+            speechRecognizerLauncher.launch(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Reconhecimento de voz indisponível", Toast.LENGTH_SHORT).show()
         }
-        speechRecognizerLauncher.launch(intent)
     }
 
     private fun processVoiceCommand(command: String) {
@@ -110,7 +114,7 @@ fun GivaroWalkmanTheme(content: @Composable () -> Unit) {
         colorScheme = darkColorScheme(
             background = Color(0xFF121212),
             surface = Color(0xFF1E1E1E),
-            primary = Color(0xFFFFD700) // Dourado estilo Sony Walkman Premium
+            primary = Color(0xFFFFD700)
         ),
         content = content
     )
@@ -131,7 +135,6 @@ fun WalkmanScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Barra Superior - Status de Foco e Som
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -157,10 +160,8 @@ fun WalkmanScreen(
             }
         }
 
-        // Capa da Música / Display Digital
         Surface(
-            modifier = Modifier
-                .size(260.dp),
+            modifier = Modifier.size(260.dp),
             color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(16.dp)
         ) {
@@ -174,7 +175,6 @@ fun WalkmanScreen(
             }
         }
 
-        // Informações da Faixa
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Givaro Stream Player",
@@ -190,7 +190,6 @@ fun WalkmanScreen(
             )
         }
 
-        // Botão de Comando de Voz Interno
         IconButton(
             onClick = onVoiceCommandClick,
             modifier = Modifier
@@ -204,7 +203,6 @@ fun WalkmanScreen(
             )
         }
 
-        // Controles de Reprodução Táteis
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
