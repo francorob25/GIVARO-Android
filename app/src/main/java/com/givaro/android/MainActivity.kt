@@ -1,9 +1,13 @@
 package com.givaro.android
 
 import android.Manifest
-import android.content.ContentUris
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.audiofx.Equalizer
 import android.os.Build
@@ -16,7 +20,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -94,11 +97,10 @@ fun PlayerScreen() {
     var repeatMode by remember { mutableIntStateOf(0) } // 0: Off, 1: All, 2: One
     var searchQuery by remember { mutableStateOf("") }
     
-    // Cores de Destaque Dinâmicas (Tema Hi-Fi)
     var themeColorIndex by remember { mutableIntStateOf(0) }
     val themeAccentColors = listOf(
         Color(0xFFFF9800), // Âmbar Clássico
-        Color(0xFFFFD700), // Dourado Hi-Fi
+        Color(0xFFFFD700), // Dourado Hi-Res
         Color(0xFFE0E0E0)  // Cyber Mono
     )
     val accentColor = themeAccentColors[themeColorIndex]
@@ -156,6 +158,9 @@ fun PlayerScreen() {
         }
     }
     
+    val totalLibraryDurationSec = playlist.sumOf { it.durationSec }
+    val totalLibraryMins = totalLibraryDurationSec / 60
+
     var currentIndex by remember { mutableIntStateOf(0) }
     val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
     val isCurrentFavorite = favoriteTrackIds.value.contains(currentTrack.id)
@@ -170,6 +175,29 @@ fun PlayerScreen() {
             BitmapFactory.decodeStream(inputStream)?.asImageBitmap()
         } catch (e: Exception) {
             null
+        }
+    }
+
+    // Gestor para pausar ao desligar os auscultadores
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                    isPlaying = false
+                }
+            }
+        }
+        val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
+        }
+        
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (e: Exception) {}
         }
     }
 
@@ -250,7 +278,7 @@ fun PlayerScreen() {
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Topo Walkman Hi-Fi com Indicador de Estado
+                    // Topo Walkman Hi-Fi
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -282,11 +310,7 @@ fun PlayerScreen() {
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (isPlaying) {
-                                Text(
-                                    text = "● ",
-                                    color = accentColor,
-                                    fontSize = 10.sp
-                                )
+                                Text(text = "● ", color = accentColor, fontSize = 10.sp)
                             }
                             Text(
                                 text = "G I V A R O",
@@ -302,12 +326,12 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Capa Central com Gestos Avançados (Mudar de faixa no swipe horizontal)
+                    // Capa Central com Swipe
                     var dragAmountX by remember { mutableFloatStateOf(0f) }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(250.dp)
+                            .height(240.dp)
                             .pointerInput(Unit) {
                                 detectHorizontalDragGestures(
                                     onDragEnd = {
@@ -329,7 +353,7 @@ fun PlayerScreen() {
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(230.dp)
+                                .size(220.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(Color(0xFF0D0D0D))
                                 .clickable { currentScreen = "info" },
@@ -354,7 +378,7 @@ fun PlayerScreen() {
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 3.sp
                                     )
-                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Spacer(modifier = Modifier.height(14.dp))
                                     Text(
                                         text = currentTrack.title,
                                         color = Color.White,
@@ -369,7 +393,7 @@ fun PlayerScreen() {
                                         fontSize = 12.sp,
                                         maxLines = 1
                                     )
-                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Spacer(modifier = Modifier.height(14.dp))
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(4.dp))
@@ -388,7 +412,7 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Controlo de Progresso, Volume e Transporte Estilo Sony Signature
+                    // Controlo de Progresso, Volume e Transporte Compacto
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -489,14 +513,14 @@ fun PlayerScreen() {
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                        // Controlos de Transporte Estilo Sony (Line-Art e Play centralizado em Destaque)
+                        // Controlos de Transporte Centralizados Estilo Sony
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
@@ -511,21 +535,25 @@ fun PlayerScreen() {
                                 )
                             }
 
+                            Spacer(modifier = Modifier.width(8.dp))
+
                             IconButton(
                                 onClick = {
                                     currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                     currentPositionMs = 0L
                                     isPlaying = true
                                 },
-                                modifier = Modifier.size(44.dp)
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                Text(text = "◀◀", color = Color.LightGray, fontSize = 14.sp)
+                                Text(text = "◀◀", color = Color.LightGray, fontSize = 13.sp)
                             }
+
+                            Spacer(modifier = Modifier.width(8.dp))
 
                             Box(
                                 modifier = Modifier
-                                    .size(54.dp)
-                                    .clip(RoundedCornerShape(27.dp))
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(26.dp))
                                     .background(accentColor)
                                     .clickable { isPlaying = !isPlaying },
                                 contentAlignment = Alignment.Center
@@ -533,10 +561,12 @@ fun PlayerScreen() {
                                 Text(
                                     text = if (isPlaying) "❚❚" else "▶",
                                     color = Color.Black,
-                                    fontSize = 16.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
+
+                            Spacer(modifier = Modifier.width(8.dp))
 
                             IconButton(
                                 onClick = {
@@ -544,10 +574,12 @@ fun PlayerScreen() {
                                     currentPositionMs = 0L
                                     isPlaying = true
                                 },
-                                modifier = Modifier.size(44.dp)
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                Text(text = "▶▶", color = Color.LightGray, fontSize = 14.sp)
+                                Text(text = "▶▶", color = Color.LightGray, fontSize = 13.sp)
                             }
+
+                            Spacer(modifier = Modifier.width(8.dp))
 
                             IconButton(
                                 onClick = { isShuffleOn = !isShuffleOn },
@@ -556,7 +588,7 @@ fun PlayerScreen() {
                                 Text(
                                     text = "⤮",
                                     color = if (isShuffleOn) accentColor else Color.DarkGray,
-                                    fontSize = 16.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -579,7 +611,7 @@ fun PlayerScreen() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "AUDIO METADATA & THEME",
+                            text = "METADATA & STATS",
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
@@ -603,11 +635,10 @@ fun PlayerScreen() {
                                 Text(text = "Artista: ${currentTrack.artist}", color = Color.Gray, fontSize = 13.sp)
                                 Text(text = "Duração: ${currentTrack.durationFormatted}", color = Color.Gray, fontSize = 13.sp)
                                 Text(text = "Qualidade: 192 kHz / 24-bit Lossless", color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                Text(text = "ID do Sistema: ${currentTrack.id}", color = Color.DarkGray, fontSize = 11.sp)
+                                Text(text = "Biblioteca: ${playlist.size} faixas (${totalLibraryMins} mins)", color = Color.Gray, fontSize = 11.sp)
                             }
                         }
 
-                        // Seletor de Tema Hi-Fi
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -873,7 +904,6 @@ fun PlayerScreen() {
                                         text = track.artist,
                                         color = Color.Gray,
                                         fontSize = 11.sp,
-                                        maxLines = 1
                                     )
                                 }
                                 Text(
