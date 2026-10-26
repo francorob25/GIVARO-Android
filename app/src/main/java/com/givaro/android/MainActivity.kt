@@ -1,4 +1,4 @@
-package com.givaro.android
+ package com.givaro.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color(0xFF121212)
+                color = Color(0xFF000000) // Preto absoluto (True Black) OLED
             ) {
                 PlayerScreen()
             }
@@ -96,7 +96,7 @@ fun PlayerScreen() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botão Principal de Play/Pause em Texto/Forma segura
+            // Botão Principal de Play/Pause
             Button(
                 onClick = { isPlaying = !isPlaying },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
@@ -115,3 +115,4 @@ fun PlayerScreen() {
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
