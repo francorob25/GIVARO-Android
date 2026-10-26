@@ -90,7 +90,9 @@ fun PlayerScreen() {
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
-    var isRepeatOn by remember { mutableStateOf(false) }
+    
+    // 0: Desligado, 1: Repetir Todos, 2: Repetir Faixa Única
+    var repeatMode by remember { mutableIntStateOf(0) }
     
     var favoriteTrackIds = remember { mutableStateOf(setOf<Long>()) }
 
@@ -215,10 +217,13 @@ fun PlayerScreen() {
             val totalMs = currentTrack.durationSec * 1000L
             if (totalMs > 0 && currentPositionMs >= totalMs) {
                 currentPositionMs = 0L
-                if (isRepeatOn) {
-                    mediaPlayer.seekTo(0)
-                } else {
-                    currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
+                when (repeatMode) {
+                    2 -> { // Repetir apenas esta faixa
+                        mediaPlayer.seekTo(0)
+                    }
+                    else -> {
+                        currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
+                    }
                 }
             }
         }
@@ -234,7 +239,7 @@ fun PlayerScreen() {
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Topo Walkman
+                    // Topo Walkman Sofisticado
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -254,7 +259,13 @@ fun PlayerScreen() {
                             }
                             Spacer(modifier = Modifier.width(4.dp))
                             TextButton(onClick = { currentScreen = "favorites" }) {
-                                Text(text = "⭐", fontSize = 14.sp)
+                                Text(
+                                    text = "FAV",
+                                    color = Color.Gray,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp
+                                )
                             }
                         }
                         
@@ -359,7 +370,7 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Controlo de Volume Integrado, Progresso e Botões
+                    // Detalhes, Favorito e Controlo de Volume
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -371,7 +382,7 @@ fun PlayerScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.fillMaxWidth(0.75f)) {
+                            Column(modifier = Modifier.fillMaxWidth(0.82f)) {
                                 Text(
                                     text = currentTrack.title,
                                     color = Color.White,
@@ -400,7 +411,8 @@ fun PlayerScreen() {
                                 }
                             ) {
                                 Text(
-                                    text = if (isCurrentFavorite) "⭐" else "☆",
+                                    text = if (isCurrentFavorite) "♥" else "♡",
+                                    color = if (isCurrentFavorite) Color(0xFFFF9800) else Color.DarkGray,
                                     fontSize = 20.sp
                                 )
                             }
@@ -442,7 +454,7 @@ fun PlayerScreen() {
                             Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 11.sp)
                         }
 
-                        // Slider de Volume Rápido
+                        // Slider de Volume
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -457,27 +469,31 @@ fun PlayerScreen() {
                                     volume = it
                                     mediaPlayer.setVolume(volume, volume)
                                 },
-                                modifier = Modifier.fillMaxWidth(0.9f),
+                                modifier = Modifier.fillMaxWidth(0.92f),
                                 colors = SliderDefaults.colors(
-                                    thumbColor = Color.LightGray,
-                                    activeTrackColor = Color.LightGray,
-                                    inactiveTrackColor = Color(0xFF222222)
+                                    thumbColor = Color(0xFFFF9800).copy(alpha = 0.8f),
+                                    activeTrackColor = Color(0xFFFF9800).copy(alpha = 0.6f),
+                                    inactiveTrackColor = Color(0xFF1B1B1B)
                                 )
                             )
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Controlos de Transporte
+                        // Controlos de Transporte com Ciclo de Repeat Inteligente
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { isRepeatOn = !isRepeatOn }) {
+                            IconButton(onClick = { repeatMode = (repeatMode + 1) % 3 }) {
                                 Text(
-                                    text = "🔁",
-                                    color = if (isRepeatOn) Color(0xFFFF9800) else Color.DarkGray,
+                                    text = when(repeatMode) {
+                                        2 -> "🔂"
+                                        1 -> "🔁"
+                                        else -> "🔁"
+                                    },
+                                    color = if (repeatMode > 0) Color(0xFFFF9800) else Color.DarkGray,
                                     fontSize = 18.sp
                                 )
                             }
@@ -668,7 +684,7 @@ fun PlayerScreen() {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Nenhuma música favorita ainda.\nToque na estrela no ecrã principal.",
+                                text = "Nenhuma música favorita ainda.\nToque no ícone de favorito na faixa.",
                                 color = Color.Gray,
                                 fontSize = 13.sp
                             )
@@ -738,7 +754,7 @@ fun PlayerScreen() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "PLAYLIST (${playlist.size})",
+                            text = "PLAYLIST (${playlist.size} FAIXAS)",
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
