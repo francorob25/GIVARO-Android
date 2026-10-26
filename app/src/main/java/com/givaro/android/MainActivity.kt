@@ -14,6 +14,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,8 +78,8 @@ fun PlayerScreen() {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
     var currentScreen by remember { mutableStateOf("player") }
-    var currentPositionSec by remember { mutableStateOf(0) }
-    var volume by remember { mutableStateOf(0.7f) }
+    var currentPositionMs by remember { mutableLongStateOf(0L) }
+    var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
     var isRepeatOn by remember { mutableStateOf(false) }
     
@@ -125,9 +127,10 @@ fun PlayerScreen() {
         }
     }
     
-    var currentIndex by remember { mutableStateOf(0) }
+    var currentIndex by remember { IntStateOf(0) }
     val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
 
+    // Gestão do MediaPlayer
     LaunchedEffect(currentIndex, isPlaying) {
         if (currentTrack.uri != android.net.Uri.EMPTY) {
             try {
@@ -148,7 +151,7 @@ fun PlayerScreen() {
                     }
                 }
             } catch (e: Exception) {
-                // Ignorar erro de formato se houver falha
+                // Tratamento silencioso
             }
         }
     }
@@ -159,17 +162,23 @@ fun PlayerScreen() {
         }
     }
 
+    // Atualização em tempo real da posição
     LaunchedEffect(isPlaying, currentIndex) {
         while (isPlaying) {
-            delay(1000L)
-            if (currentPositionSec < currentTrack.durationSec) {
-                currentPositionSec++
+            delay(250L)
+            if (mediaPlayer.isPlaying) {
+                currentPositionMs = mediaPlayer.currentPosition.toLong()
             } else {
+                currentPositionMs += 250L
+            }
+            
+            val totalMs = currentTrack.durationSec * 1000L
+            if (totalMs > 0 && currentPositionMs >= totalMs) {
+                currentPositionMs = 0L
                 if (isRepeatOn) {
-                    currentPositionSec = 0
+                    mediaPlayer.seekTo(0)
                 } else {
                     currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
-                    currentPositionSec = 0
                 }
             }
         }
@@ -177,10 +186,10 @@ fun PlayerScreen() {
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isPlaying) 1.05f else 1f,
+        initialValue = 0.98f,
+        targetValue = if (isPlaying) 1.04f else 0.98f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
+            animation = tween(800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulseScale"
@@ -195,6 +204,7 @@ fun PlayerScreen() {
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Topo
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -210,7 +220,6 @@ fun PlayerScreen() {
                         )
                     }
                     
-                    // Tipografia GIVARO refinada com espaçamento elegante e estilo Hi-Fi
                     Text(
                         text = "G I V A R O",
                         color = Color(0xFFDDDDDD),
@@ -224,13 +233,37 @@ fun PlayerScreen() {
                     }
                 }
 
+                // Área Central com Gestos (Swipe de Música)
+                var dragAmount by remember { mutableFloatStateOf(0f) }
                 Box(
-                    modifier = Modifier.size(260.dp),
+                    modifier = Modifier
+                        .size(260.dp)
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    if (dragAmount > 50f) {
+                                        // Swipe para a direita -> Música anterior
+                                        currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
+                                        currentPositionMs = 0L
+                                        isPlaying = true
+                                    } else if (dragAmount < -50f) {
+                                        // Swipe para a esquerda -> Próxima música
+                                        currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
+                                        currentPositionMs = 0L
+                                        isPlaying = true
+                                    }
+                                    dragAmount = 0f
+                                },
+                                onHorizontalDrag = { _, delta ->
+                                    dragAmount += delta
+                                }
+                            )
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Canvas(modifier = Modifier.size(250.dp * pulseScale)) {
                         drawCircle(
-                            color = if (isPlaying) Color(0xFFFF9800).copy(alpha = 0.3f) else Color(0xFF1A1A1A),
+                            color = if (isPlaying) Color(0xFFFF9800).copy(alpha = 0.35f) else Color(0xFF1A1A1A),
                             style = Stroke(width = 2.dp.toPx())
                         )
                     }
@@ -271,16 +304,24 @@ fun PlayerScreen() {
                     }
                 }
 
+                // Controlos de Progresso e Navegação
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    val progressFraction = if (currentTrack.durationSec > 0) currentPositionSec.toFloat() / currentTrack.durationSec else 0f
+                    val totalMs = currentTrack.durationSec * 1000L
+                    val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
                     
                     Slider(
                         value = progressFraction,
                         onValueChange = { newFraction ->
-                            currentPositionSec = (newFraction * currentTrack.durationSec).toInt()
+                            val targetMs = (newFraction * totalMs).toLong()
+                            currentPositionMs = targetMs
+                            if (currentTrack.uri != android.net.Uri.EMPTY) {
+                                try {
+                                    mediaPlayer.seekTo(targetMs.toInt())
+                                } catch (e: Exception) {}
+                            }
                         },
                         colors = SliderDefaults.colors(
                             thumbColor = Color(0xFFFF9800),
@@ -295,8 +336,9 @@ fun PlayerScreen() {
                             .padding(horizontal = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        val currentMins = currentPositionSec / 60
-                        val currentSecs = currentPositionSec % 60
+                        val currentSecsTotal = (currentPositionMs / 1000).toInt()
+                        val currentMins = currentSecsTotal / 60
+                        val currentSecs = currentSecsTotal % 60
                         Text(text = String.format("%02d:%02d", currentMins, currentSecs), color = Color.Gray, fontSize = 12.sp)
                         Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 12.sp)
                     }
@@ -344,7 +386,7 @@ fun PlayerScreen() {
                         Button(
                             onClick = {
                                 currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
-                                currentPositionSec = 0
+                                currentPositionMs = 0L
                                 isPlaying = true
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
@@ -374,7 +416,7 @@ fun PlayerScreen() {
                         Button(
                             onClick = {
                                 currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
-                                currentPositionSec = 0
+                                currentPositionMs = 0L
                                 isPlaying = true
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
@@ -428,7 +470,7 @@ fun PlayerScreen() {
                                 .clickable {
                                     currentIndex = index
                                     isPlaying = true
-                                    currentPositionSec = 0
+                                    currentPositionMs = 0L
                                     currentScreen = "player"
                                 }
                                 .padding(16.dp),
