@@ -16,6 +16,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -86,13 +87,22 @@ data class Track(
 fun PlayerScreen() {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("player") } // "player", "playlist", "equalizer", "favorites", "info"
+    var currentScreen by remember { mutableStateOf("player") } 
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) } // 0: Off, 1: All, 2: One
     var searchQuery by remember { mutableStateOf("") }
     
+    // Cores de Destaque Dinâmicas (Tema Hi-Fi)
+    var themeColorIndex by remember { mutableIntStateOf(0) }
+    val themeAccentColors = listOf(
+        Color(0xFFFF9800), // Âmbar Clássico
+        Color(0xFFFFD700), // Dourado Hi-Fi
+        Color(0xFFE0E0E0)  // Cyber Mono
+    )
+    val accentColor = themeAccentColors[themeColorIndex]
+
     var favoriteTrackIds = remember { mutableStateOf(setOf<Long>()) }
 
     var selectedPreset by remember { mutableIntStateOf(0) }
@@ -240,7 +250,7 @@ fun PlayerScreen() {
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Topo Walkman Hi-Fi
+                    // Topo Walkman Hi-Fi com Indicador de Estado
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -252,7 +262,7 @@ fun PlayerScreen() {
                             TextButton(onClick = { currentScreen = "equalizer" }, contentPadding = PaddingValues(4.dp)) {
                                 Text(
                                     text = "EQ",
-                                    color = Color(0xFFFF9800),
+                                    color = accentColor,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 2.sp
@@ -270,21 +280,30 @@ fun PlayerScreen() {
                             }
                         }
                         
-                        Text(
-                            text = "G I V A R O",
-                            color = Color.LightGray,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Light,
-                            letterSpacing = 8.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isPlaying) {
+                                Text(
+                                    text = "● ",
+                                    color = accentColor,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            Text(
+                                text = "G I V A R O",
+                                color = Color.LightGray,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Light,
+                                letterSpacing = 8.sp
+                            )
+                        }
                         
                         IconButton(onClick = { currentScreen = "playlist" }) {
-                            Text(text = "☰", color = Color(0xFFFF9800), fontSize = 20.sp)
+                            Text(text = "☰", color = accentColor, fontSize = 20.sp)
                         }
                     }
 
-                    // Capa Central com Swipe
-                    var dragAmount by remember { mutableFloatStateOf(0f) }
+                    // Capa Central com Gestos Avançados (Mudar de faixa no swipe horizontal)
+                    var dragAmountX by remember { mutableFloatStateOf(0f) }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -292,18 +311,18 @@ fun PlayerScreen() {
                             .pointerInput(Unit) {
                                 detectHorizontalDragGestures(
                                     onDragEnd = {
-                                        if (dragAmount > 50f) {
+                                        if (dragAmountX > 50f) {
                                             currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                             currentPositionMs = 0L
                                             isPlaying = true
-                                        } else if (dragAmount < -50f) {
+                                        } else if (dragAmountX < -50f) {
                                             currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
                                             currentPositionMs = 0L
                                             isPlaying = true
                                         }
-                                        dragAmount = 0f
+                                        dragAmountX = 0f
                                     },
-                                    onHorizontalDrag = { _, delta -> dragAmount += delta }
+                                    onHorizontalDrag = { _, delta -> dragAmountX += delta }
                                 )
                             },
                         contentAlignment = Alignment.Center
@@ -330,7 +349,7 @@ fun PlayerScreen() {
                                 ) {
                                     Text(
                                         text = if (isPlaying) "HI-RES AUDIO" else "PAUSED",
-                                        color = Color(0xFFFF9800),
+                                        color = accentColor,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 3.sp
@@ -359,7 +378,7 @@ fun PlayerScreen() {
                                     ) {
                                         Text(
                                             text = "FLAC 192 kHz / 24-bit",
-                                            color = Color(0xFFFF9800).copy(alpha = 0.8f),
+                                            color = accentColor.copy(alpha = 0.8f),
                                             fontSize = 9.sp,
                                             letterSpacing = 1.sp
                                         )
@@ -369,7 +388,7 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Controlo de Progresso, Volume e Transporte Estilo Sony
+                    // Controlo de Progresso, Volume e Transporte Estilo Sony Signature
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -408,7 +427,7 @@ fun PlayerScreen() {
                             ) {
                                 Text(
                                     text = if (isCurrentFavorite) "♥" else "♡",
-                                    color = if (isCurrentFavorite) Color(0xFFFF9800) else Color.DarkGray,
+                                    color = if (isCurrentFavorite) accentColor else Color.DarkGray,
                                     fontSize = 20.sp
                                 )
                             }
@@ -429,8 +448,8 @@ fun PlayerScreen() {
                                 }
                             },
                             colors = SliderDefaults.colors(
-                                thumbColor = Color(0xFFFF9800),
-                                activeTrackColor = Color(0xFFFF9800),
+                                thumbColor = accentColor,
+                                activeTrackColor = accentColor,
                                 inactiveTrackColor = Color(0xFF1C1C1C)
                             )
                         )
@@ -463,8 +482,8 @@ fun PlayerScreen() {
                                 },
                                 modifier = Modifier.fillMaxWidth(0.92f),
                                 colors = SliderDefaults.colors(
-                                    thumbColor = Color(0xFFFF9800).copy(alpha = 0.7f),
-                                    activeTrackColor = Color(0xFFFF9800).copy(alpha = 0.5f),
+                                    thumbColor = accentColor.copy(alpha = 0.7f),
+                                    activeTrackColor = accentColor.copy(alpha = 0.5f),
                                     inactiveTrackColor = Color(0xFF141414)
                                 )
                             )
@@ -472,7 +491,7 @@ fun PlayerScreen() {
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        // Controlos de Transporte Clean / Line-Art
+                        // Controlos de Transporte Estilo Sony (Line-Art e Play centralizado em Destaque)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -486,7 +505,7 @@ fun PlayerScreen() {
                             ) {
                                 Text(
                                     text = if (repeatMode == 2) "1" else "∞",
-                                    color = if (repeatMode > 0) Color(0xFFFF9800) else Color.DarkGray,
+                                    color = if (repeatMode > 0) accentColor else Color.DarkGray,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -507,7 +526,7 @@ fun PlayerScreen() {
                                 modifier = Modifier
                                     .size(54.dp)
                                     .clip(RoundedCornerShape(27.dp))
-                                    .background(Color(0xFFFF9800))
+                                    .background(accentColor)
                                     .clickable { isPlaying = !isPlaying },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -536,7 +555,7 @@ fun PlayerScreen() {
                             ) {
                                 Text(
                                     text = "⤮",
-                                    color = if (isShuffleOn) Color(0xFFFF9800) else Color.DarkGray,
+                                    color = if (isShuffleOn) accentColor else Color.DarkGray,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -560,36 +579,71 @@ fun PlayerScreen() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "AUDIO METADATA",
+                            text = "AUDIO METADATA & THEME",
                             color = Color.White,
-                            fontSize = 16.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 4.sp
+                            letterSpacing = 3.sp
                         )
                         IconButton(onClick = { currentScreen = "player" }) {
-                            Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                            Text(text = "✕", color = accentColor, fontSize = 20.sp)
                         }
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF0D0D0D))
-                            .padding(20.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(text = "Título: ${currentTrack.title}", color = Color.White, fontSize = 14.sp)
-                            Text(text = "Artista: ${currentTrack.artist}", color = Color.Gray, fontSize = 13.sp)
-                            Text(text = "Duração: ${currentTrack.durationFormatted}", color = Color.Gray, fontSize = 13.sp)
-                            Text(text = "Qualidade: 192 kHz / 24-bit Lossless", color = Color(0xFFFF9800), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            Text(text = "ID do Sistema: ${currentTrack.id}", color = Color.DarkGray, fontSize = 11.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF0D0D0D))
+                                .padding(20.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(text = "Título: ${currentTrack.title}", color = Color.White, fontSize = 14.sp)
+                                Text(text = "Artista: ${currentTrack.artist}", color = Color.Gray, fontSize = 13.sp)
+                                Text(text = "Duração: ${currentTrack.durationFormatted}", color = Color.Gray, fontSize = 13.sp)
+                                Text(text = "Qualidade: 192 kHz / 24-bit Lossless", color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "ID do Sistema: ${currentTrack.id}", color = Color.DarkGray, fontSize = 11.sp)
+                            }
+                        }
+
+                        // Seletor de Tema Hi-Fi
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF0D0D0D))
+                                .padding(16.dp)
+                        ) {
+                            Column {
+                                Text(text = "COR DE DESTAQUE HI-FI", color = Color.Gray, fontSize = 11.sp, letterSpacing = 2.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    themeAccentColors.forEachIndexed { idx, color ->
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(18.dp))
+                                                .background(color)
+                                                .clickable { themeColorIndex = idx },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (themeColorIndex == idx) {
+                                                Text(text = "✓", color = Color.Black, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
                     Button(
                         onClick = { currentScreen = "player" },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                        colors = ButtonDefaults.buttonColors(containerColor = accentColor),
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = RoundedCornerShape(24.dp)
                     ) {
@@ -618,7 +672,7 @@ fun PlayerScreen() {
                             letterSpacing = 4.sp
                         )
                         IconButton(onClick = { currentScreen = "player" }) {
-                            Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                            Text(text = "✕", color = accentColor, fontSize = 20.sp)
                         }
                     }
 
@@ -637,12 +691,12 @@ fun PlayerScreen() {
                         ) {
                             Text(
                                 text = name,
-                                color = if (isSelected) Color(0xFFFF9800) else Color.White,
+                                color = if (isSelected) accentColor else Color.White,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium
                             )
                             if (isSelected) {
-                                Text(text = "●", color = Color(0xFFFF9800), fontSize = 12.sp)
+                                Text(text = "●", color = accentColor, fontSize = 12.sp)
                             }
                         }
                     }
@@ -670,7 +724,7 @@ fun PlayerScreen() {
                             letterSpacing = 4.sp
                         )
                         IconButton(onClick = { currentScreen = "player" }) {
-                            Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                            Text(text = "✕", color = accentColor, fontSize = 20.sp)
                         }
                     }
 
@@ -712,7 +766,7 @@ fun PlayerScreen() {
                                     Column(modifier = Modifier.fillMaxWidth(0.8f)) {
                                         Text(
                                             text = track.title,
-                                            color = Color(0xFFFF9800),
+                                            color = accentColor,
                                             fontSize = 15.sp,
                                             fontWeight = FontWeight.Medium,
                                             maxLines = 1
@@ -762,11 +816,10 @@ fun PlayerScreen() {
                             letterSpacing = 4.sp
                         )
                         IconButton(onClick = { currentScreen = "player" }) {
-                            Text(text = "✕", color = Color(0xFFFF9800), fontSize = 20.sp)
+                            Text(text = "✕", color = accentColor, fontSize = 20.sp)
                         }
                     }
 
-                    // Campo de Pesquisa Minimalista
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -776,11 +829,11 @@ fun PlayerScreen() {
                         placeholder = { Text("Pesquisar música ou artista...", color = Color.DarkGray, fontSize = 13.sp) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFFF9800),
+                            focusedBorderColor = accentColor,
                             unfocusedBorderColor = Color(0xFF222222),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            cursorColor = Color(0xFFFF9800)
+                            cursorColor = accentColor
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -810,7 +863,7 @@ fun PlayerScreen() {
                                 Column(modifier = Modifier.fillMaxWidth(0.8f)) {
                                     Text(
                                         text = track.title,
-                                        color = if (isSelected) Color(0xFFFF9800) else Color.White,
+                                        color = if (isSelected) accentColor else Color.White,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1
