@@ -1,1 +1,2 @@
 # GIVARO-Android
+- Build APK
