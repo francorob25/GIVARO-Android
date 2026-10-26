@@ -1,7 +1,5 @@
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-}
+apply(plugin = "com.android.application")
+apply(plugin = "org.jetbrains.kotlin.android")
 
 android {
     namespace = "com.givaro.app"
@@ -61,6 +59,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
 }
+
 
 
 
