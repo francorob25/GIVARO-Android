@@ -42,7 +42,6 @@ private val Muted = Color(0xFF888888)
 private val Panel = Color(0xFF121212)
 private val Selected = Color(0xFF1E1A14)
 
-// Anotação adicionada para evitar falhas no build do GitHub Actions com APIs do Material 3
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,13 +75,13 @@ data class Track(
 )
 
 // Fontes de áudio suportadas no Hub Givaro
-enum class AudioSource(val displayName: String) {
-    LOCAL("Local"),
-    APPLE("Apple Music"),
-    SPOTIFY("Spotify"),
-    DEEZER("Deezer"),
-    AMAZON("Amazon"),
-    YOUTUBE("YouTube")
+enum class AudioSource(val displayName: String, val url: String) {
+    LOCAL("Local", ""),
+    APPLE("Apple Music", "https://music.apple.com"),
+    SPOTIFY("Spotify", "https://open.spotify.com"),
+    DEEZER("Deezer", "https://www.deezer.com"),
+    AMAZON("Amazon Music", "https://music.amazon.com"),
+    YOUTUBE("YouTube Music", "https://music.youtube.com")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -169,7 +168,6 @@ fun GivaroApp() {
                         id
                     )
 
-                    // Filtro seguro para ignorar ficheiros do WhatsApp/notas de voz pelo título
                     val isInvalid = title.contains("WhatsApp", ignoreCase = true) ||
                                     title.contains("Voice Note", ignoreCase = true)
 
@@ -379,31 +377,6 @@ fun GivaroApp() {
 
             // Conteúdo dinâmico de acordo com a fonte escolhida
             when (selectedSource) {
-                AudioSource.APPLE -> {
-                    AppleMusicScreen()
-                }
-                AudioSource.SPOTIFY, AudioSource.DEEZER, AudioSource.AMAZON, AudioSource.YOUTUBE -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${selectedSource.displayName} Hub",
-                                color = Amber,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = "Integração pronta para carregar.",
-                                color = Muted,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
                 AudioSource.LOCAL -> {
                     when (screen) {
                         "equalizer" -> {
@@ -859,6 +832,10 @@ fun GivaroApp() {
                         }
                     }
                 }
+                else -> {
+                    // Carrega o leitor web correspondente para cada serviço de streaming
+                    StreamingWebViewScreen(url = selectedSource.url)
+                }
             }
         }
     }
@@ -897,9 +874,9 @@ fun StreamingHubHeader(
     }
 }
 
-// Ecrã Apple Music
+// Ecrã Web Genérico para os Serviços de Streaming (Apple, Spotify, Deezer, Amazon, YouTube)
 @Composable
-fun AppleMusicScreen() {
+fun StreamingWebViewScreen(url: String) {
     var isLoaded by remember { mutableStateOf(false) }
 
     Box(
@@ -918,7 +895,7 @@ fun AppleMusicScreen() {
                             isLoaded = true
                         }
                     }
-                    loadUrl("https://music.apple.com")
+                    loadUrl(url)
                 }
             },
             modifier = Modifier.fillMaxSize()
