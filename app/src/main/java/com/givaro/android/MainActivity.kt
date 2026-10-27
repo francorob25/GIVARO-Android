@@ -74,8 +74,8 @@ data class Track(
 fun GivaroApp() {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("player") }
-    var isCircularViewMode by remember { mutableStateOf(false) }
+    var currentScreen by remember { mutableStateOf("player") } // player, equalizer, playlist, favorites, settings
+    var isCircularViewMode by remember { mutableStateOf(false) } // Modo circular imersivo (5ª tela do conceito)[span_2](start_span)[span_2](end_span)
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
@@ -219,14 +219,17 @@ fun GivaroApp() {
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (currentScreen) {
                     "player" -> {
+                        // Tela Principal rigorosamente idêntica ao design concept (1ª tela da referência)[span_3](start_span)[span_3](end_span)
                         Column(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 6.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 22.dp, vertical = 10.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Top Bar Rigorosamente idêntica ao Conceito (EQ, FAV, GIVARO, Definições)
+                            // Top Bar (EQ, FAV, GIVARO, Configurações)[span_4](start_span)[span_4](end_span)
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -264,11 +267,11 @@ fun GivaroApp() {
                                 )
                             }
 
-                            // Capa Proporcional Exata do Conceito
+                            // Capa de Álbum (Suporta alternância limpa para a 5ª tela circular)[span_5](start_span)[span_5](end_span)
                             if (isCircularViewMode) {
                                 Box(
                                     modifier = Modifier
-                                        .size(270.dp)
+                                        .size(260.dp)
                                         .clip(CircleShape)
                                         .border(2.5.dp, Brush.radialGradient(listOf(accentColor, Color.Transparent)), CircleShape)
                                         .background(Color(0xFF0A0A0A)),
@@ -288,8 +291,8 @@ fun GivaroApp() {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(290.dp)
-                                        .clip(RoundedCornerShape(10.dp))
+                                        .height(260.dp)
+                                        .clip(RoundedCornerShape(14.dp))
                                         .background(Color(0xFF0A0A0A)),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -298,7 +301,7 @@ fun GivaroApp() {
                                     } else {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
                                             Text(text = "WAV 192 kHz / 24 bit", color = Color.Gray, fontSize = 10.sp, letterSpacing = 1.sp)
-                                            Spacer(modifier = Modifier.height(14.dp))
+                                            Spacer(modifier = Modifier.height(12.dp))
                                             Text(text = currentTrack.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(text = currentTrack.artist, color = Color.Gray, fontSize = 13.sp, maxLines = 1)
@@ -307,10 +310,14 @@ fun GivaroApp() {
                                 }
                             }
 
-                            // Bloco Inferior de Metadados e Controlos IDÊNTICO ao Design
-                            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                            // Bloco Inferior Perfeitamente Proporcional
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -322,9 +329,8 @@ fun GivaroApp() {
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(text = currentTrack.artist, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
                                         }
-                                        Spacer(modifier = Modifier.height(3.dp))
-                                        Text(text = currentTrack.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                        Spacer(modifier = Modifier.height(1.dp))
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(text = currentTrack.title, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         Text(text = "Digital Music Player  •  ${currentIndex + 1}/${playlist.size}", color = Color.DarkGray, fontSize = 10.sp)
                                     }
 
@@ -337,8 +343,6 @@ fun GivaroApp() {
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(2.dp))
-
                                 val totalMs = currentTrack.durationSec * 1000L
                                 val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
                                 
@@ -350,19 +354,17 @@ fun GivaroApp() {
                                         try { mediaPlayer.seekTo(target.toInt()) } catch (e: Exception) {}
                                     },
                                     colors = SliderDefaults.colors(thumbColor = accentColor, activeTrackColor = accentColor, inactiveTrackColor = Color(0xFF1C1C1C)),
-                                    modifier = Modifier.height(12.dp)
+                                    modifier = Modifier.height(10.dp)
                                 )
 
-                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     val secs = (currentPositionMs / 1000).toInt()
                                     Text(text = String.format("%02d:%02d", secs / 60, secs % 60), color = Color.Gray, fontSize = 10.sp)
                                     Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 10.sp)
                                 }
 
-                                Spacer(modifier = Modifier.height(2.dp))
-
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -370,16 +372,13 @@ fun GivaroApp() {
                                     Slider(
                                         value = volume,
                                         onValueChange = { volume = it; mediaPlayer.setVolume(volume, volume) },
-                                        modifier = Modifier.fillMaxWidth(0.9f).height(10.dp),
+                                        modifier = Modifier.fillMaxWidth(0.9f).height(8.dp),
                                         colors = SliderDefaults.colors(thumbColor = accentColor.copy(alpha = 0.7f), activeTrackColor = accentColor.copy(alpha = 0.5f), inactiveTrackColor = Color(0xFF141414))
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                // Botões de Transporte Circulares Perfeitos Estilo Hardware Walkman
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -391,9 +390,9 @@ fun GivaroApp() {
                                         currentPositionMs = 0L
                                         isPlaying = true
                                     }, contentAlignment = Alignment.Center) {
-                                        Text(text = "◀◀", color = Color.LightGray, fontSize = 12.sp)
+                                        Text(text = "◀◀", color = Color.LightGray, fontSize = 11.sp)
                                     }
-                                    Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(accentColor).clickable { isPlaying = !isPlaying }, contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.size(56.dp).clip(CircleShape).background(accentColor).clickable { isPlaying = !isPlaying }, contentAlignment = Alignment.Center) {
                                         Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(Color(0xFF121212)).clickable {
@@ -401,10 +400,10 @@ fun GivaroApp() {
                                         currentPositionMs = 0L
                                         isPlaying = true
                                     }, contentAlignment = Alignment.Center) {
-                                        Text(text = "▶▶", color = Color.LightGray, fontSize = 12.sp)
+                                        Text(text = "▶▶", color = Color.LightGray, fontSize = 11.sp)
                                     }
                                     Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFF121212)).clickable { isShuffleOn = !isShuffleOn }, contentAlignment = Alignment.Center) {
-                                        Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                        Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -412,6 +411,7 @@ fun GivaroApp() {
                     }
 
                     "equalizer" -> {
+                        // Tela 2: Equalizador (2ª tela do conceito)[span_6](start_span)[span_6](end_span)
                         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
                             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -476,6 +476,7 @@ fun GivaroApp() {
                     }
 
                     "playlist" -> {
+                        // Tela 3: Playlist (3ª tela do conceito)[span_7](start_span)[span_7](end_span)
                         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
                             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -525,6 +526,7 @@ fun GivaroApp() {
                     }
 
                     "favorites" -> {
+                        // Tela 4: Favoritos (4ª tela do conceito)[span_8](start_span)[span_8](end_span)
                         val favList = playlist.filter { favoriteTrackIds.contains(it.id) }
                         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
                             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -569,6 +571,7 @@ fun GivaroApp() {
                     }
 
                     "settings" -> {
+                        // Tela 6: Configurações (6ª tela do conceito)[span_9](start_span)[span_9](end_span)
                         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
                             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -623,7 +626,7 @@ fun GivaroApp() {
                 }
             }
 
-            // Barra de Navegação Inferior Fixa Exata
+            // Barra de Navegação Inferior Fixa
             Row(
                 modifier = Modifier.fillMaxWidth().background(Color(0xFF030303)).padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
@@ -645,3 +648,4 @@ fun GivaroApp() {
         }
     }
 }
+
