@@ -26,8 +26,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -419,12 +417,8 @@ private fun GivaroScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { screen = "equalizer" }) {
-                Icon(
-                    Icons.Default.Equalizer,
-                    contentDescription = "Equalizador",
-                    tint = Amber
-                )
+            TextButton(onClick = { screen = "equalizer" }) {
+                Text("EQ", color = Amber, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -446,7 +440,7 @@ private fun GivaroScreen(
 
             IconButton(onClick = { screen = "menu" }) {
                 Icon(
-                    Icons.Default.Menu,
+                    androidx.compose.material.icons.Icons.Default.Menu,
                     contentDescription = "Menu",
                     tint = White
                 )
@@ -500,11 +494,11 @@ private fun GivaroScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.Equalizer,
-                            contentDescription = null,
-                            tint = Amber,
-                            modifier = Modifier.size(62.dp)
+                        Text(
+                            "EQ",
+                            color = Amber,
+                            fontSize = 42.sp,
+                            fontWeight = FontWeight.Bold
                         )
 
                         Spacer(Modifier.height(8.dp))
@@ -593,7 +587,7 @@ private fun GivaroScreen(
                 ) {
                     IconButton(onClick = { shuffle = !shuffle }) {
                         Icon(
-                            Icons.Default.Shuffle,
+                            androidx.compose.material.icons.Icons.Default.Shuffle,
                             contentDescription = "Aleatório",
                             tint = if (shuffle) Amber else Muted
                         )
@@ -604,7 +598,7 @@ private fun GivaroScreen(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            Icons.Default.SkipPrevious,
+                            androidx.compose.material.icons.Icons.Default.SkipPrevious,
                             contentDescription = "Anterior",
                             tint = White,
                             modifier = Modifier.size(32.dp)
@@ -626,8 +620,8 @@ private fun GivaroScreen(
                             .background(Amber)
                     ) {
                         Icon(
-                            if (playing) Icons.Default.Pause
-                            else Icons.Default.PlayArrow,
+                            if (playing) androidx.compose.material.icons.Icons.Default.Pause
+                            else androidx.compose.material.icons.Icons.Default.PlayArrow,
                             contentDescription = if (playing) "Pausar" else "Reproduzir",
                             tint = Black,
                             modifier = Modifier.size(40.dp)
@@ -639,7 +633,7 @@ private fun GivaroScreen(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            Icons.Default.SkipNext,
+                            androidx.compose.material.icons.Icons.Default.SkipNext,
                             contentDescription = "Próxima",
                             tint = White,
                             modifier = Modifier.size(32.dp)
@@ -648,7 +642,7 @@ private fun GivaroScreen(
 
                     IconButton(onClick = { repeat = !repeat }) {
                         Icon(
-                            Icons.Default.Repeat,
+                            androidx.compose.material.icons.Icons.Default.Repeat,
                             contentDescription = "Repetir",
                             tint = if (repeat) Amber else Muted
                         )
@@ -670,7 +664,7 @@ private fun GivaroScreen(
                     )
 
                     Icon(
-                        Icons.Default.FavoriteBorder,
+                        androidx.compose.material.icons.Icons.Default.FavoriteBorder,
                         contentDescription = "Favoritos",
                         tint = Amber,
                         modifier = Modifier.size(20.dp)
@@ -700,7 +694,7 @@ private fun GivaroScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { screen = "player" }) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            androidx.compose.material.icons.Icons.Default.ArrowBack,
                             contentDescription = "Voltar",
                             tint = Amber
                         )
@@ -769,7 +763,7 @@ private fun GivaroScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    Icons.Default.MusicNote,
+                                    androidx.compose.material.icons.Icons.Default.MusicNote,
                                     contentDescription = null,
                                     tint = Amber,
                                     modifier = Modifier.size(30.dp)
@@ -811,7 +805,7 @@ private fun GivaroScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { screen = "player" }) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            androidx.compose.material.icons.Icons.Default.ArrowBack,
                             contentDescription = "Voltar",
                             tint = Amber
                         )
@@ -827,13 +821,12 @@ private fun GivaroScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                Icon(
-                    Icons.Default.Equalizer,
-                    contentDescription = null,
-                    tint = Amber,
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .size(76.dp)
+                Text(
+                    "EQ",
+                    color = Amber,
+                    fontSize = 64.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
 
                 Text(
@@ -859,7 +852,7 @@ private fun GivaroScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { screen = "player" }) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            androidx.compose.material.icons.Icons.Default.ArrowBack,
                             contentDescription = "Voltar",
                             tint = Amber
                         )
@@ -897,7 +890,7 @@ private fun GivaroScreen(
                 }
             }
 
-            // STREAMING WEBVIEWS INTEGRADOS (Apple, Spotify, Deezer, Amazon, YouTube)
+            // STREAMING WEBVIEWS INTEGRADOS
             else -> {
                 val currentService = services.find { it.screenKey == screen }
                 if (currentService != null) {
@@ -911,7 +904,6 @@ private fun GivaroScreen(
     }
 }
 
-// Ecrã Web Integrado para os Serviços de Streaming (Com suporte a cookies, sessões e fallback)
 @Composable
 fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -932,7 +924,7 @@ fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.Default.ArrowBack,
+                    androidx.compose.material.icons.Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
                     tint = Amber
                 )
@@ -1094,11 +1086,7 @@ private fun MenuRow(
             )
         }
 
-        Icon(
-            Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = Amber
-        )
+        Text("›", color = Amber, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     }
 }
 
