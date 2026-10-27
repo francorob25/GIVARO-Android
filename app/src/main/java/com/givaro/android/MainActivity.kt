@@ -848,7 +848,7 @@ private fun GivaroScreen(
                 }
             }
 
-            // STREAMING WEBVIEWS INTEGRADOS
+            // STREAMING WEBVIEWS INTEGRADOS (Layout Imersivo sem margens pesadas)
             else -> {
                 val currentService = services.find { it.screenKey == screen }
                 if (currentService != null) {
@@ -865,102 +865,99 @@ private fun GivaroScreen(
 @Composable
 fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
     var isLoaded by remember(url) { mutableStateOf(false) }
-    var hasError by remember(url) { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Panel)
-            .padding(8.dp),
+            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .background(Black),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Barra de topo interna limpa e integrada
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Panel)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text("‹ Voltar", color = Amber, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
+            Spacer(Modifier.weight(1f))
             Text(
-                "HUB DE STREAMING",
-                color = White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
+                "MODO HUB",
+                color = Muted,
+                fontSize = 10.sp,
                 letterSpacing = 2.sp
             )
         }
 
-        Spacer(Modifier.height(4.dp))
-
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        databaseEnabled = true
-                        loadsImagesAutomatically = true
-                        javaScriptCanOpenWindowsAutomatically = true
-                        setSupportMultipleWindows(true)
-                        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        cacheMode = WebSettings.LOAD_DEFAULT
-                        mediaPlaybackRequiresUserGesture = false
-                        
-                        // User-Agent limpo de navegador mobile moderno
-                        userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
-                    }
-
-                    CookieManager.getInstance().setAcceptCookie(true)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                    }
-
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                            isLoaded = false
-                            hasError = false
-                        }
-
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            isLoaded = true
-                        }
-
-                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                            if (request?.isForMainFrame == true) {
-                                hasError = true
-                                isLoaded = true
-                            }
-                        }
-
-                        override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: android.net.http.SslError?) {
-                            handler?.proceed() // Ignora pequenos erros de certificado para evitar bloqueios em serviços Google/Apple
-                        }
-                    }
-
-                    loadUrl(url)
-                }
-            },
-            update = { webView ->
-                if (webView.tag != url) {
-                    webView.tag = url
-                    webView.loadUrl(url)
-                }
-            },
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
-        )
+                .background(Black)
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        settings.apply {
+                            javaScriptEnabled = true
+                            domStorageEnabled = true
+                            databaseEnabled = true
+                            loadsImagesAutomatically = true
+                            javaScriptCanOpenWindowsAutomatically = true
+                            setSupportMultipleWindows(true)
+                            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                            cacheMode = WebSettings.LOAD_DEFAULT
+                            mediaPlaybackRequiresUserGesture = false
+                            
+                            // User-Agent de telemóvel moderno
+                            userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+                        }
 
-        if (!isLoaded && !hasError) {
-            Spacer(Modifier.height(6.dp))
-            CircularProgressIndicator(color = Amber, modifier = Modifier.size(24.dp))
-        }
+                        CookieManager.getInstance().setAcceptCookie(true)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                        }
 
-        if (hasError) {
-            Spacer(Modifier.height(6.dp))
-            Text("Erro ao carregar o serviço de streaming.", color = Color.White, fontSize = 12.sp)
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                                isLoaded = false
+                            }
+
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                isLoaded = true
+                            }
+
+                            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: android.net.http.SslError?) {
+                                handler?.proceed()
+                            }
+                        }
+
+                        loadUrl(url)
+                    }
+                },
+                update = { webView ->
+                    if (webView.tag != url) {
+                        webView.tag = url
+                        webView.loadUrl(url)
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            if (!isLoaded) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Amber)
+                }
+            }
         }
     }
 }
