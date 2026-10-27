@@ -314,41 +314,55 @@ fun PlayerScreen() {
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { repeatMode = (repeatMode + 1) % 3 }, modifier = Modifier.size(36.dp)) {
-                                Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Box(
+                                modifier = Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)).background(Color(0xFF141414)).clickable { repeatMode = (repeatMode + 1) % 3 },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = {
+                            
+                            Spacer(modifier = Modifier.width(10.dp))
+                            
+                            Box(
+                                modifier = Modifier.size(46.dp).clip(RoundedCornerShape(23.dp)).background(Color(0xFF141414)).clickable {
                                     currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                     currentPositionMs = 0L
                                     isPlaying = true
                                 },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Text(text = "◀◀", color = Color.LightGray, fontSize = 13.sp)
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(26.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "◀◀", color = Color.LightGray, fontSize = 14.sp)
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = {
+                            
+                            Spacer(modifier = Modifier.width(10.dp))
+                            
+                            Box(
+                                modifier = Modifier.size(64.dp).clip(RoundedCornerShape(32.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                            
+                            Spacer(modifier = Modifier.width(10.dp))
+                            
+                            Box(
+                                modifier = Modifier.size(46.dp).clip(RoundedCornerShape(23.dp)).background(Color(0xFF141414)).clickable {
                                     currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
                                     currentPositionMs = 0L
                                     isPlaying = true
                                 },
-                                modifier = Modifier.size(40.dp)
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "▶▶", color = Color.LightGray, fontSize = 13.sp)
+                                Text(text = "▶▶", color = Color.LightGray, fontSize = 14.sp)
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = { isShuffleOn = !isShuffleOn }, modifier = Modifier.size(36.dp)) {
-                                Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            
+                            Spacer(modifier = Modifier.width(10.dp))
+                            
+                            Box(
+                                modifier = Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)).background(Color(0xFF141414)).clickable { isShuffleOn = !isShuffleOn },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
