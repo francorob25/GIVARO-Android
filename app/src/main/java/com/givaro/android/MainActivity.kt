@@ -209,8 +209,8 @@ fun PlayerScreen() {
         when (currentScreen) {
             "player" -> {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.SpaceAround,
+                    modifier = Modifier.fillMaxSize().padding(20.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Top Bar estilo Walkman
@@ -234,9 +234,11 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Capa de Álbum Central (Estilo Walkman A306)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Capa de Álbum Central
                     Box(
-                        modifier = Modifier.size(190.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)),
+                        modifier = Modifier.size(200.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (albumArtBitmap != null) {
@@ -244,7 +246,7 @@ fun PlayerScreen() {
                         } else {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
                                 Text(text = "WAV 192 kHz / 24 bit", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(text = currentTrack.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(text = currentTrack.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
@@ -252,7 +254,9 @@ fun PlayerScreen() {
                         }
                     }
 
-                    // Informações detalhadas e controlos de reprodução puxados para cima
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Bloco inferior com espaçamento bem distribuído
                     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                         
                         // Hi-Res Badge & Metadados
@@ -271,9 +275,9 @@ fun PlayerScreen() {
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(text = currentTrack.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
                                 }
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(text = currentTrack.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                Spacer(modifier = Modifier.height(1.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(text = "Digital Music Player  •  ${currentIndex + 1}/${playlist.size}", color = Color.DarkGray, fontSize = 10.sp)
                             }
 
@@ -288,7 +292,7 @@ fun PlayerScreen() {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         // Barra de Progresso Fina
                         val totalMs = currentTrack.durationSec * 1000L
@@ -312,7 +316,7 @@ fun PlayerScreen() {
                             Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 10.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         // Controlo de Volume Discreto
                         Row(
@@ -329,7 +333,7 @@ fun PlayerScreen() {
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         // Botões de Transporte Circular Estilo Walkman
                         Row(
@@ -338,46 +342,46 @@ fun PlayerScreen() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
-                                modifier = Modifier.size(38.dp).clip(RoundedCornerShape(19.dp)).background(Color(0xFF121212)).clickable { repeatMode = (repeatMode + 1) % 3 },
+                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF121212)).clickable { repeatMode = (repeatMode + 1) % 3 },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                             
                             Box(
-                                modifier = Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)).background(Color(0xFF121212)).clickable {
+                                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF121212)).clickable {
                                     currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                     currentPositionMs = 0L
                                     isPlaying = true
                                 },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "◀◀", color = Color.LightGray, fontSize = 12.sp)
+                                Text(text = "◀◀", color = Color.LightGray, fontSize = 13.sp)
                             }
                             
                             Box(
-                                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(28.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
+                                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(30.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
                             
                             Box(
-                                modifier = Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)).background(Color(0xFF121212)).clickable {
+                                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF121212)).clickable {
                                     currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
                                     currentPositionMs = 0L
                                     isPlaying = true
                                 },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "▶▶", color = Color.LightGray, fontSize = 12.sp)
+                                Text(text = "▶▶", color = Color.LightGray, fontSize = 13.sp)
                             }
                             
                             Box(
-                                modifier = Modifier.size(38.dp).clip(RoundedCornerShape(19.dp)).background(Color(0xFF121212)).clickable { isShuffleOn = !isShuffleOn },
+                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF121212)).clickable { isShuffleOn = !isShuffleOn },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
