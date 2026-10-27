@@ -209,58 +209,74 @@ fun PlayerScreen() {
         when (currentScreen) {
             "player" -> {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    modifier = Modifier.fillMaxSize().padding(20.dp),
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Top Bar estilo Walkman
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TextButton(onClick = { currentScreen = "equalizer" }, contentPadding = PaddingValues(4.dp)) {
-                                Text(text = "EQ", color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                Text(text = "EQ", color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             TextButton(onClick = { currentScreen = "favorites" }, contentPadding = PaddingValues(4.dp)) {
-                                Text(text = "FAV", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                Text(text = "FAV", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                             }
                         }
-                        Text(text = "G I V A R O", color = Color.LightGray, fontSize = 13.sp, fontWeight = FontWeight.Light, letterSpacing = 8.sp)
-                        IconButton(onClick = { currentScreen = "playlist" }) {
-                            Text(text = "☰", color = accentColor, fontSize = 20.sp)
+                        Text(text = "G I V A R O", color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 6.sp)
+                        IconButton(onClick = { currentScreen = "playlist" }, modifier = Modifier.size(36.dp)) {
+                            Text(text = "☰", color = accentColor, fontSize = 18.sp)
                         }
                     }
 
+                    // Capa de Álbum Central (Estilo Walkman A306)
                     Box(
-                        modifier = Modifier.size(220.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF0D0D0D)),
+                        modifier = Modifier.size(200.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (albumArtBitmap != null) {
                             Image(bitmap = albumArtBitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         } else {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(20.dp)) {
-                                Text(text = "HI-RES AUDIO", color = accentColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
-                                Spacer(modifier = Modifier.height(14.dp))
-                                Text(text = currentTrack.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = currentTrack.artist, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+                                Text(text = "WAV 192 kHz / 24 bit", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(text = currentTrack.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(text = currentTrack.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
                             }
                         }
                     }
 
+                    // Informações detalhadas e controlos de reprodução
                     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        
+                        // Hi-Res Badge & Metadados
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.fillMaxWidth(0.82f)) {
-                                Text(text = currentTrack.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(3.dp)).background(Color(0xFF221A00)).padding(horizontal = 4.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(text = "HR", color = accentColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(text = currentTrack.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
+                                }
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = currentTrack.artist, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                                Text(text = currentTrack.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Spacer(modifier = Modifier.height(1.dp))
+                                Text(text = "Digital Music Player  •  ${currentIndex + 1}/${playlist.size}", color = Color.DarkGray, fontSize = 10.sp)
                             }
+
                             IconButton(
                                 onClick = {
                                     val set = favoriteTrackIds.value.toMutableSet()
@@ -272,6 +288,9 @@ fun PlayerScreen() {
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Barra de Progresso Fina
                         val totalMs = currentTrack.durationSec * 1000L
                         val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
                         
@@ -282,17 +301,20 @@ fun PlayerScreen() {
                                 currentPositionMs = target
                                 try { mediaPlayer.seekTo(target.toInt()) } catch (e: Exception) {}
                             },
-                            colors = SliderDefaults.colors(thumbColor = accentColor, activeTrackColor = accentColor, inactiveTrackColor = Color(0xFF1C1C1C))
+                            colors = SliderDefaults.colors(thumbColor = accentColor, activeTrackColor = accentColor, inactiveTrackColor = Color(0xFF1C1C1C)),
+                            modifier = Modifier.height(16.dp)
                         )
 
+                        // Tempos
                         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             val secs = (currentPositionMs / 1000).toInt()
-                            Text(text = String.format("%02d:%02d", secs / 60, secs % 60), color = Color.Gray, fontSize = 11.sp)
-                            Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 11.sp)
+                            Text(text = String.format("%02d:%02d", secs / 60, secs % 60), color = Color.Gray, fontSize = 10.sp)
+                            Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 10.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
+                        // Controlo de Volume Discreto
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -302,67 +324,60 @@ fun PlayerScreen() {
                             Slider(
                                 value = volume,
                                 onValueChange = { volume = it; mediaPlayer.setVolume(volume, volume) },
-                                modifier = Modifier.fillMaxWidth(0.92f),
+                                modifier = Modifier.fillMaxWidth(0.9f).height(14.dp),
                                 colors = SliderDefaults.colors(thumbColor = accentColor.copy(alpha = 0.7f), activeTrackColor = accentColor.copy(alpha = 0.5f), inactiveTrackColor = Color(0xFF141414))
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
+                        // Botões de Transporte Circular Estilo Walkman
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
-                                modifier = Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)).background(Color(0xFF141414)).clickable { repeatMode = (repeatMode + 1) % 3 },
+                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF121212)).clickable { repeatMode = (repeatMode + 1) % 3 },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                             
-                            Spacer(modifier = Modifier.width(10.dp))
-                            
                             Box(
-                                modifier = Modifier.size(46.dp).clip(RoundedCornerShape(23.dp)).background(Color(0xFF141414)).clickable {
+                                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF121212)).clickable {
                                     currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                     currentPositionMs = 0L
                                     isPlaying = true
                                 },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "◀◀", color = Color.LightGray, fontSize = 14.sp)
+                                Text(text = "◀◀", color = Color.LightGray, fontSize = 13.sp)
                             }
                             
-                            Spacer(modifier = Modifier.width(10.dp))
-                            
                             Box(
-                                modifier = Modifier.size(64.dp).clip(RoundedCornerShape(32.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
+                                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(30.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
                             
-                            Spacer(modifier = Modifier.width(10.dp))
-                            
                             Box(
-                                modifier = Modifier.size(46.dp).clip(RoundedCornerShape(23.dp)).background(Color(0xFF141414)).clickable {
+                                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFF121212)).clickable {
                                     currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
                                     currentPositionMs = 0L
                                     isPlaying = true
                                 },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "▶▶", color = Color.LightGray, fontSize = 14.sp)
+                                Text(text = "▶▶", color = Color.LightGray, fontSize = 13.sp)
                             }
                             
-                            Spacer(modifier = Modifier.width(10.dp))
-                            
                             Box(
-                                modifier = Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)).background(Color(0xFF141414)).clickable { isShuffleOn = !isShuffleOn },
+                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF121212)).clickable { isShuffleOn = !isShuffleOn },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
