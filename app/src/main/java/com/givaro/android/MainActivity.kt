@@ -25,8 +25,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -799,11 +801,12 @@ private fun GivaroScreen(
                 )
             }
 
-            // MENU DE NAVEGAÇÃO
+            // MENU DE NAVEGAÇÃO (Com scroll vertical para mostrar todos os serviços incluindo o YouTube)
             "menu" -> Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 4.dp),
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -849,6 +852,8 @@ private fun GivaroScreen(
                         screen = service.screenKey
                     }
                 }
+                
+                Spacer(Modifier.height(20.dp))
             }
 
             // STREAMING WEBVIEWS INTEGRADOS (Sem bordas, ocupação total a 100%)
@@ -876,7 +881,7 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
             .background(Black),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Barra topo minimalista integrada sem margens laterais
+        // Barra topo minimalista integrada
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -899,7 +904,7 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
             Spacer(Modifier.width(48.dp))
         }
 
-        // WebView a ocupar 100% do espaço sem molduras ou arredondamentos forçados
+        // WebView a ocupar 100% do espaço sem molduras
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -920,7 +925,6 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
                             cacheMode = WebSettings.LOAD_DEFAULT
                             mediaPlaybackRequiresUserGesture = false
                             
-                            // User-Agent limpo para telemóvel para garantir o layout correto em todos
                             userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
                         }
 
