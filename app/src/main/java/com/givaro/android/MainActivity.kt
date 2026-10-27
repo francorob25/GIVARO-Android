@@ -1,3 +1,4 @@
+
 package com.givaro.android
 
 import android.Manifest
@@ -33,22 +34,29 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 
-class MainActivity : ComponentActivity() {
-    private val reqLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> }
+private val Amber = Color(0xFFFF9800)
+private val Muted = Color(0xFF888888)
+private val Panel = Color(0xFF121212)
+private val Selected = Color(0xFF1E1A14)
 
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_AUDIO
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-        if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
-            reqLauncher.launch(perm)
-        }
+
         setContent {
-            Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF000000)) {
-                GivaroApp()
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Amber,
+                    background = Color.Black,
+                    surface = Panel
+                )
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.Black
+                ) {
+                    GivaroApp()
+                }
             }
         }
     }
@@ -62,14 +70,34 @@ data class Track(
     val uri: android.net.Uri
 )
 
-val Amber = Color(0xFFFF9800)
-val Muted = Color(0xFF888888)
-val Panel = Color(0xFF121212)
-val Selected = Color(0xFF1E1A14)
-
 @Composable
 fun GivaroApp() {
     val context = LocalContext.current
+
+    val permission = remember {
+        if (Build.VERSION.SDK_INT >= 33) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+    }
+
+    var permissionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                permission
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            permissionGranted = granted
+        }
+
     var screen by remember { mutableStateOf("player") }
     var playing by remember { mutableStateOf(false) }
     var index by remember { mutableIntStateOf(0) }
@@ -79,34 +107,19 @@ fun GivaroApp() {
     var repeatOne by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var preset by remember { mutableIntStateOf(0) }
-    val presets = listOf("Flat", "Bass Boost", "Clarity", "Hi-Res", "Vocal")
-    
     var favorites by remember { mutableStateOf(setOf<Long>()) }
-    var permissionGranted by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                    Manifest.permission.READ_MEDIA_AUDIO
-                else
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
 
-    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-        Manifest.permission.READ_MEDIA_AUDIO
-    else
-        Manifest.permission.READ_EXTERNAL_STORAGE
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        permissionGranted = granted
-    }
+    val presets = listOf(
+        "Flat",
+        "Bass Boost",
+        "Clarity",
+        "Hi-Res",
+        "Vocal"
+    )
 
     val tracks = remember(permissionGranted) {
-        val list = mutableListOf<Track>()
+        val result = mutableListOf<Track>()
+
         if (permissionGranted) {
             val projection = arrayOf(
                 MediaStore.Audio.Media._ID,
@@ -114,105 +127,170 @@ fun GivaroApp() {
                 MediaStore.Audio.Media.ARTIST,
                 MediaStore.Audio.Media.DURATION
             )
+
             context.contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                projection, null, null,
-                MediaStore.Audio.Media.TITLE + " ASC"
+                projection,
+                "${MediaStore.Audio.Media.IS_MUSIC} != 0",
+                null,
+                "${MediaStore.Audio.Media.TITLE} ASC"
             )?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                val durCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+                val idCol = cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media._ID
+                )
+                val titleCol = cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.TITLE
+                )
+                val artistCol = cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.ARTIST
+                )
+                val durationCol = cursor.getColumnIndexOrThrow(
+                    MediaStore.Audio.Media.DURATION
+                )
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
-                    val title = cursor.getString(titleCol) ?: "Desconhecido"
-                    val artist = cursor.getString(artistCol) ?: "Artista Desconhecido"
-                    val dur = cursor.getLong(durCol)
-                    val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-                    list.add(Track(id, title, artist, dur, uri))
+                    val title = cursor.getString(titleCol)
+                        ?: "Título desconhecido"
+                    val artist = cursor.getString(artistCol)
+                        ?: "Artista desconhecido"
+                    val duration = cursor.getLong(durationCol)
+
+                    val uri = ContentUris.withAppendedId(
+                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                        id
+                    )
+
+                    result.add(
+                        Track(
+                            id = id,
+                            title = title,
+                            artist = artist,
+                            duration = duration,
+                            uri = uri
+                        )
+                    )
                 }
             }
         }
-        list
+
+        result
     }
 
-    val track = tracks.getOrNull(index)
+    val safeIndex = if (tracks.isEmpty()) {
+        0
+    } else {
+        index.coerceIn(0, tracks.lastIndex)
+    }
+
+    val track = tracks.getOrNull(safeIndex)
     val duration = track?.duration ?: 0L
 
     val player = remember { MediaPlayer() }
+    var loadedTrackId by remember { mutableStateOf<Long?>(null) }
 
-    LaunchedEffect(track, playing) {
-        if (track != null) {
-            try {
-                if (playing) {
-                    if (!player.isPlaying) {
-                        try {
-                            player.reset()
-                            player.setDataSource(context, track.uri)
-                            player.prepare()
-                            player.seekTo(position.toInt())
-                            player.start()
-                        } catch (_: Exception) {
-                            player.start()
-                        }
-                    }
-                } else {
-                    if (player.isPlaying) {
-                        player.pause()
-                    }
+    fun timeText(ms: Long): String {
+        val seconds = (ms / 1000).coerceAtLeast(0)
+        return String.format(
+            "%02d:%02d",
+            seconds / 60,
+            seconds % 60
+        )
+    }
+
+    fun nextTrack() {
+        if (tracks.isEmpty()) return
+
+        index = if (shuffle && tracks.size > 1) {
+            (tracks.indices.filter { it != safeIndex }).random()
+        } else {
+            (safeIndex + 1) % tracks.size
+        }
+
+        position = 0L
+        playing = true
+    }
+
+    fun previousTrack() {
+        if (tracks.isEmpty()) return
+
+        index = if (safeIndex > 0) {
+            safeIndex - 1
+        } else {
+            tracks.lastIndex
+        }
+
+        position = 0L
+        playing = true
+    }
+
+    LaunchedEffect(track?.id, playing) {
+        val current = track ?: run {
+            playing = false
+            return@LaunchedEffect
+        }
+
+        try {
+            if (loadedTrackId != current.id) {
+                player.reset()
+                player.setDataSource(context, current.uri)
+                player.prepare()
+                loadedTrackId = current.id
+                position = 0L
+            }
+
+            if (playing) {
+                if (!player.isPlaying) {
+                    player.seekTo(position.toInt().coerceAtLeast(0))
+                    player.start()
                 }
-            } catch (_: Exception) {}
+            } else if (player.isPlaying) {
+                player.pause()
+            }
+        } catch (_: Exception) {
+            playing = false
         }
     }
 
-    LaunchedEffect(playing) {
+    LaunchedEffect(playing, track?.id) {
         while (playing) {
             delay(300L)
+
             try {
                 if (player.isPlaying) {
                     position = player.currentPosition.toLong()
-                    if (duration > 0 && position >= duration - 500) {
+
+                    if (duration > 0 && position >= duration - 400) {
                         if (repeatOne) {
                             player.seekTo(0)
                             position = 0L
                         } else {
-                            index = if (shuffle && tracks.size > 1) {
-                                (tracks.indices.filter { it != index }).random()
-                            } else {
-                                (index + 1) % tracks.size
-                            }
-                            position = 0L
+                            nextTrack()
                         }
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                playing = false
+            }
         }
     }
 
     LaunchedEffect(volume) {
         try {
             player.setVolume(volume, volume)
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+            // O player pode ainda não estar preparado.
+        }
     }
 
     DisposableEffect(Unit) {
         onDispose {
             try {
                 player.release()
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                // O player já pode ter sido liberado.
+            }
         }
-    }
-
-    fun selectPreset(i: Int) {
-        preset = i
-    }
-
-    fun timeText(ms: Long): String {
-        val totalSec = ms / 1000
-        val m = totalSec / 60
-        val s = totalSec % 60
-        return String.format("%02d:%02d", m, s)
     }
 
     Box(
@@ -232,11 +310,18 @@ fun GivaroApp() {
             ) {
                 TextButton(
                     onClick = {
-                        screen = if (screen == "equalizer") "player"
-                        else "equalizer"
+                        screen = if (screen == "equalizer") {
+                            "player"
+                        } else {
+                            "equalizer"
+                        }
                     }
                 ) {
-                    Text("EQ", color = Amber, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "EQ",
+                        color = Amber,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -257,8 +342,11 @@ fun GivaroApp() {
 
                 TextButton(
                     onClick = {
-                        screen = if (screen == "playlist") "player"
-                        else "playlist"
+                        screen = if (screen == "playlist") {
+                            "player"
+                        } else {
+                            "playlist"
+                        }
                     }
                 ) {
                     Text("☰", color = Amber, fontSize = 22.sp)
@@ -276,12 +364,15 @@ fun GivaroApp() {
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
                     )
+
                     Spacer(Modifier.height(8.dp))
+
                     Text(
                         "Personalize sua experiência sonora",
                         color = Muted,
                         fontSize = 12.sp
                     )
+
                     Spacer(Modifier.height(24.dp))
 
                     presets.forEachIndexed { i, name ->
@@ -293,9 +384,10 @@ fun GivaroApp() {
                                 .background(
                                     if (preset == i) Selected else Panel
                                 )
-                                .clickable { selectPreset(i) }
+                                .clickable { preset = i }
                                 .padding(18.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -303,6 +395,7 @@ fun GivaroApp() {
                                 color = if (preset == i) Amber else Color.White,
                                 fontWeight = FontWeight.Medium
                             )
+
                             Text(
                                 if (preset == i) "●" else "›",
                                 color = Amber
@@ -311,8 +404,10 @@ fun GivaroApp() {
                     }
 
                     Spacer(Modifier.height(12.dp))
+
                     Text(
-                        "Os efeitos disponíveis dependem do aparelho.",
+                        "Os efeitos reais dependem do aparelho. " +
+                            "Estes perfis são apenas visuais nesta versão.",
                         color = Muted,
                         fontSize = 11.sp
                     )
@@ -335,7 +430,10 @@ fun GivaroApp() {
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         placeholder = {
-                            Text("Buscar música ou artista", color = Muted)
+                            Text(
+                                "Buscar música ou artista",
+                                color = Muted
+                            )
                         },
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -353,80 +451,105 @@ fun GivaroApp() {
                         Button(
                             onClick = {
                                 permissionLauncher.launch(permission)
-                            }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Amber
+                            )
                         ) {
-                            Text("Permitir acesso às músicas")
+                            Text(
+                                "Permitir acesso às músicas",
+                                color = Color.Black
+                            )
                         }
-                    } else if (tracks.isEmpty()) {
-                        Text(
-                            "Nenhuma música encontrada no dispositivo.",
-                            color = Muted
-                        )
                     } else {
                         val filtered = tracks.filter {
-                            it.title.contains(query, true) ||
-                                it.artist.contains(query, true)
+                            it.title.contains(query, ignoreCase = true) ||
+                                it.artist.contains(query, ignoreCase = true)
                         }
 
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(filtered, key = { it.id }) { item ->
-                                val originalIndex =
-                                    tracks.indexOfFirst { it.id == item.id }
+                        if (filtered.isEmpty()) {
+                            Text(
+                                "Nenhuma música encontrada.",
+                                color = Muted
+                            )
+                        } else {
+                            LazyColumn(
+                                verticalArrangement =
+                                    Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(filtered, key = { it.id }) { item ->
+                                    val originalIndex =
+                                        tracks.indexOfFirst { it.id == item.id }
 
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(13.dp))
-                                        .background(
-                                            if (originalIndex == index)
-                                                Selected else Panel
-                                        )
-                                        .clickable {
-                                            index = originalIndex
-                                            position = 0L
-                                            playing = true
-                                            screen = "player"
-                                        }
-                                        .padding(14.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        Modifier
-                                            .size(44.dp)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(Color(0xFF30200D)),
-                                        contentAlignment = Alignment.Center
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(13.dp))
+                                            .background(
+                                                if (originalIndex == safeIndex)
+                                                    Selected else Panel
+                                            )
+                                            .clickable {
+                                                index = originalIndex
+                                                position = 0L
+                                                playing = true
+                                                screen = "player"
+                                            }
+                                            .padding(14.dp),
+                                        verticalAlignment =
+                                            Alignment.CenterVertically
                                     ) {
-                                        Text("♫", color = Amber, fontSize = 23.sp)
-                                    }
+                                        Box(
+                                            Modifier
+                                                .size(44.dp)
+                                                .clip(
+                                                    RoundedCornerShape(10.dp)
+                                                )
+                                                .background(
+                                                    Color(0xFF30200D)
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                "♫",
+                                                color = Amber,
+                                                fontSize = 23.sp
+                                            )
+                                        }
 
-                                    Spacer(Modifier.width(12.dp))
+                                        Spacer(Modifier.width(12.dp))
 
-                                    Column(Modifier.weight(1f)) {
+                                        Column(
+                                            Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                item.title,
+                                                color = if (
+                                                    originalIndex == safeIndex
+                                                ) Amber else Color.White,
+                                                maxLines = 1,
+                                                overflow =
+                                                    TextOverflow.Ellipsis,
+                                                fontWeight =
+                                                    FontWeight.Medium
+                                            )
+
+                                            Text(
+                                                item.artist,
+                                                color = Muted,
+                                                fontSize = 12.sp,
+                                                maxLines = 1,
+                                                overflow =
+                                                    TextOverflow.Ellipsis
+                                            )
+                                        }
+
                                         Text(
-                                            item.title,
-                                            color = if (originalIndex == index)
-                                                Amber else Color.White,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        Text(
-                                            item.artist,
+                                            timeText(item.duration),
                                             color = Muted,
-                                            fontSize = 12.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            fontSize = 11.sp
                                         )
                                     }
-
-                                    Text(
-                                        timeText(item.duration),
-                                        color = Muted,
-                                        fontSize = 11.sp
-                                    )
                                 }
                             }
                         }
@@ -452,7 +575,9 @@ fun GivaroApp() {
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Box(
                                 Modifier
                                     .size(130.dp)
@@ -503,6 +628,8 @@ fun GivaroApp() {
                                 color = Color.Black
                             )
                         }
+
+                        Spacer(Modifier.height(12.dp))
                     }
 
                     Text(
@@ -527,14 +654,19 @@ fun GivaroApp() {
                     Spacer(Modifier.height(16.dp))
 
                     Slider(
-                        value = if (duration > 0)
-                            (position.toFloat() / duration).coerceIn(0f, 1f)
-                        else 0f,
+                        value = if (duration > 0L) {
+                            (position.toFloat() / duration)
+                                .coerceIn(0f, 1f)
+                        } else {
+                            0f
+                        },
                         onValueChange = { fraction ->
                             position = (fraction * duration).toLong()
                             try {
                                 player.seekTo(position.toInt())
-                            } catch (_: Exception) {}
+                            } catch (_: Exception) {
+                                // Aguarda o player ficar pronto.
+                            }
                         },
                         colors = SliderDefaults.colors(
                             thumbColor = Amber,
@@ -547,8 +679,16 @@ fun GivaroApp() {
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(timeText(position), color = Muted, fontSize = 11.sp)
-                        Text(timeText(duration), color = Muted, fontSize = 11.sp)
+                        Text(
+                            timeText(position),
+                            color = Muted,
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            timeText(duration),
+                            color = Muted,
+                            fontSize = 11.sp
+                        )
                     }
 
                     Spacer(Modifier.height(8.dp))
@@ -580,7 +720,9 @@ fun GivaroApp() {
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextButton(onClick = { shuffle = !shuffle }) {
+                        TextButton(
+                            onClick = { shuffle = !shuffle }
+                        ) {
                             Text(
                                 "⤮",
                                 color = if (shuffle) Amber else Muted,
@@ -588,14 +730,7 @@ fun GivaroApp() {
                             )
                         }
 
-                        PlayerButton("◀◀") {
-                            if (tracks.isNotEmpty()) {
-                                index = if (index > 0) index - 1
-                                else tracks.lastIndex
-                                position = 0L
-                                playing = true
-                            }
-                        }
+                        PlayerButton("◀◀", ::previousTrack)
 
                         Box(
                             Modifier
@@ -604,7 +739,11 @@ fun GivaroApp() {
                                 .background(Amber)
                                 .clickable {
                                     if (tracks.isEmpty()) {
-                                        screen = "playlist"
+                                        if (!permissionGranted) {
+                                            permissionLauncher.launch(permission)
+                                        } else {
+                                            screen = "playlist"
+                                        }
                                     } else {
                                         playing = !playing
                                     }
@@ -619,19 +758,11 @@ fun GivaroApp() {
                             )
                         }
 
-                        PlayerButton("▶▶") {
-                            if (tracks.isNotEmpty()) {
-                                index = if (shuffle && tracks.size > 1) {
-                                    (tracks.indices.filter { it != index }).random()
-                                } else {
-                                    (index + 1) % tracks.size
-                                }
-                                position = 0L
-                                playing = true
-                            }
-                        }
+                        PlayerButton("▶▶", ::nextTrack)
 
-                        TextButton(onClick = { repeatOne = !repeatOne }) {
+                        TextButton(
+                            onClick = { repeatOne = !repeatOne }
+                        ) {
                             Text(
                                 if (repeatOne) "1" else "↻",
                                 color = if (repeatOne) Amber else Muted,
@@ -649,18 +780,27 @@ fun GivaroApp() {
                         TextButton(
                             onClick = {
                                 track?.let {
-                                    favorites = if (it.id in favorites)
+                                    favorites = if (it.id in favorites) {
                                         favorites - it.id
-                                    else favorites + it.id
+                                    } else {
+                                        favorites + it.id
+                                    }
                                 }
                             }
                         ) {
                             Text(
-                                if (track != null && track.id in favorites)
+                                if (
+                                    track != null &&
+                                    track.id in favorites
+                                ) {
                                     "♥  FAVORITO"
-                                else "♡  ADICIONAR AOS FAVORITOS",
-                                color = if (track != null && track.id in favorites)
-                                    Amber else Muted,
+                                } else {
+                                    "♡  ADICIONAR AOS FAVORITOS"
+                                },
+                                color = if (
+                                    track != null &&
+                                    track.id in favorites
+                                ) Amber else Muted,
                                 fontSize = 11.sp,
                                 letterSpacing = 1.sp
                             )
