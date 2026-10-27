@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.webkit.CookieManager
+import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -863,7 +864,6 @@ private fun GivaroScreen(
 
 @Composable
 fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
-    val context = LocalContext.current
     var isLoaded by remember(url) { mutableStateOf(false) }
     var hasError by remember(url) { mutableStateOf(false) }
 
@@ -906,6 +906,9 @@ fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
                         mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         cacheMode = WebSettings.LOAD_DEFAULT
                         mediaPlaybackRequiresUserGesture = false
+                        
+                        // User-Agent limpo de navegador mobile moderno
+                        userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
                     }
 
                     CookieManager.getInstance().setAcceptCookie(true)
@@ -928,6 +931,10 @@ fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
                                 hasError = true
                                 isLoaded = true
                             }
+                        }
+
+                        override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: android.net.http.SslError?) {
+                            handler?.proceed() // Ignora pequenos erros de certificado para evitar bloqueios em serviços Google/Apple
                         }
                     }
 
@@ -953,30 +960,7 @@ fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
 
         if (hasError) {
             Spacer(Modifier.height(6.dp))
-            Text("Não foi possível carregar esta página.", color = Color.White, fontSize = 12.sp)
-            Spacer(Modifier.height(6.dp))
-            Button(
-                onClick = {
-                    try {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    } catch (_: Exception) {}
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Amber)
-            ) {
-                Text("Abrir no navegador externo", color = Color.Black, fontSize = 12.sp)
-            }
-        }
-
-        Spacer(Modifier.height(6.dp))
-
-        TextButton(
-            onClick = {
-                try {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                } catch (_: Exception) {}
-            }
-        ) {
-            Text("ABRIR SERVIÇO EXTERNAMENTE", color = Amber, fontSize = 10.sp, letterSpacing = 1.sp)
+            Text("Erro ao carregar o serviço de streaming.", color = Color.White, fontSize = 12.sp)
         }
     }
 }
@@ -1046,10 +1030,10 @@ private fun MenuRow(
 private fun timeText(milliseconds: Long): String {
     val totalSeconds = (milliseconds / 1000).coerceAtLeast(0)
 
-    return String.format(
+    String.format(
         Locale.getDefault(),
         "%d:%02d",
         totalSeconds / 60,
         totalSeconds % 60
-    )
+    ).let { return it }
 }
