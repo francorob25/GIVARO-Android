@@ -209,13 +209,13 @@ fun PlayerScreen() {
         when (currentScreen) {
             "player" -> {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.Top,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Top Bar estilo Walkman
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -234,11 +234,9 @@ fun PlayerScreen() {
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Capa de Álbum Central
+                    // Capa de Álbum Central com proporção harmónica
                     Box(
-                        modifier = Modifier.size(190.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)),
+                        modifier = Modifier.size(195.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (albumArtBitmap != null) {
@@ -246,7 +244,7 @@ fun PlayerScreen() {
                         } else {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
                                 Text(text = "WAV 192 kHz / 24 bit", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(text = currentTrack.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(text = currentTrack.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
@@ -254,9 +252,7 @@ fun PlayerScreen() {
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Bloco inferior puxado para cima logo abaixo da capa
+                    // Bloco inferior com espaçamento interno perfeitamente equilibrado
                     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                         
                         // Hi-Res Badge & Metadados da Música
@@ -316,7 +312,7 @@ fun PlayerScreen() {
                             Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 10.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         // Controlo de Volume Discreto
                         Row(
@@ -333,7 +329,7 @@ fun PlayerScreen() {
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         // Botões de Transporte Circular Estilo Walkman
                         Row(
@@ -360,7 +356,7 @@ fun PlayerScreen() {
                             }
                             
                             Box(
-                                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(28.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
+                                modifier = Modifier.size(54.dp).clip(RoundedCornerShape(27.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold)
