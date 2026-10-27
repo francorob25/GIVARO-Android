@@ -234,11 +234,9 @@ fun PlayerScreen() {
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
                     // Capa de Álbum Central
                     Box(
-                        modifier = Modifier.size(200.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)),
+                        modifier = Modifier.size(190.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (albumArtBitmap != null) {
@@ -254,12 +252,10 @@ fun PlayerScreen() {
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Bloco inferior com espaçamento bem distribuído
+                    // Bloco inferior com espaçamento interno bem marcado entre as linhas
                     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                         
-                        // Hi-Res Badge & Metadados
+                        // Hi-Res Badge & Metadados da Música
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -275,7 +271,7 @@ fun PlayerScreen() {
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(text = currentTrack.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
                                 }
-                                Spacer(modifier = Modifier.height(3.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(text = currentTrack.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(text = "Digital Music Player  •  ${currentIndex + 1}/${playlist.size}", color = Color.DarkGray, fontSize = 10.sp)
@@ -292,7 +288,8 @@ fun PlayerScreen() {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        // Espaço generoso entre o título e a barra de progresso
+                        Spacer(modifier = Modifier.height(18.dp))
 
                         // Barra de Progresso Fina
                         val totalMs = currentTrack.durationSec * 1000L
@@ -306,7 +303,7 @@ fun PlayerScreen() {
                                 try { mediaPlayer.seekTo(target.toInt()) } catch (e: Exception) {}
                             },
                             colors = SliderDefaults.colors(thumbColor = accentColor, activeTrackColor = accentColor, inactiveTrackColor = Color(0xFF1C1C1C)),
-                            modifier = Modifier.height(14.dp)
+                            modifier = Modifier.height(16.dp)
                         )
 
                         // Tempos
@@ -316,7 +313,8 @@ fun PlayerScreen() {
                             Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 10.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        // Espaço generoso entre a barra de progresso e o controlo de volume
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         // Controlo de Volume Discreto
                         Row(
@@ -328,12 +326,13 @@ fun PlayerScreen() {
                             Slider(
                                 value = volume,
                                 onValueChange = { volume = it; mediaPlayer.setVolume(volume, volume) },
-                                modifier = Modifier.fillMaxWidth(0.9f).height(12.dp),
+                                modifier = Modifier.fillMaxWidth(0.9f).height(14.dp),
                                 colors = SliderDefaults.colors(thumbColor = accentColor.copy(alpha = 0.7f), activeTrackColor = accentColor.copy(alpha = 0.5f), inactiveTrackColor = Color(0xFF141414))
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        // Espaço generoso entre o volume e os botões de transporte circulares
+                        Spacer(modifier = Modifier.height(20.dp))
 
                         // Botões de Transporte Circular Estilo Walkman
                         Row(
