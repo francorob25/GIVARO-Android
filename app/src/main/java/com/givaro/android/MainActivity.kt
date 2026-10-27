@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF000000)) {
-                PlayerScreen()
+                GivaroApp()
             }
         }
     }
@@ -68,17 +68,27 @@ data class Track(
 }
 
 @Composable
-fun PlayerScreen() {
+fun GivaroApp() {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("player") }
+    var currentScreen by remember { mutableStateOf("player") } // player, equalizer, playlist, favorites, settings
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) }
     
     val accentColor = Color(0xFFFF9800)
-    var favoriteTrackIds = remember { mutableStateOf(setOf<Long>()) }
+    var favoriteTrackIds by remember { mutableStateOf(setOf<Long>()) }
+
+    // Equalizer & Presets State
+    var selectedPreset by remember { mutableIntStateOf(0) }
+    val presets = listOf("Flat", "Bass Boost", "Clarity", "Hi-Res", "Vocal")
+    var bassBoostEnabled by remember { mutableStateOf(true) }
+    var virtualizerEnabled by remember { mutableStateOf(false) }
+    var volumeEqEnabled by remember { mutableStateOf(false) }
+
+    // Playlist Navigation State
+    var playlistCategory by remember { mutableStateOf("Todas") }
 
     val mediaPlayer = remember { MediaPlayer() }
     var equalizer by remember { mutableStateOf<Equalizer?>(null) }
@@ -118,7 +128,11 @@ fun PlayerScreen() {
         if (list.isEmpty()) {
             listOf(
                 Track(0L, 0L, "Nocturne in Amber", "Givaro Analog", 252, android.net.Uri.EMPTY),
-                Track(1L, 0L, "Midnight Drive", "Givaro Sound", 202, android.net.Uri.EMPTY)
+                Track(1L, 0L, "Midnight Drive", "Givaro Sound", 202, android.net.Uri.EMPTY),
+                Track(2L, 0L, "Lost in Tokyo", "Sakura Dreams", 216, android.net.Uri.EMPTY),
+                Track(3L, 0L, "Beyond the Horizon", "Aurora", 268, android.net.Uri.EMPTY),
+                Track(4L, 0L, "Silent Waves", "Oceanic", 201, android.net.Uri.EMPTY),
+                Track(5L, 0L, "Electric Heart", "Neon Fields", 228, android.net.Uri.EMPTY)
             )
         } else {
             list
@@ -127,7 +141,7 @@ fun PlayerScreen() {
     
     var currentIndex by remember { mutableIntStateOf(0) }
     val currentTrack = playlist.getOrElse(currentIndex) { playlist[0] }
-    val isCurrentFavorite = favoriteTrackIds.value.contains(currentTrack.id)
+    val isCurrentFavorite = favoriteTrackIds.contains(currentTrack.id)
 
     val albumArtBitmap = remember(currentTrack.albumId) {
         try {
@@ -195,198 +209,377 @@ fun PlayerScreen() {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF050505))) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Top Bar
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { currentScreen = "equalizer" }, contentPadding = PaddingValues(4.dp)) {
-                        Text(text = "EQ", color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    TextButton(onClick = { currentScreen = "favorites" }, contentPadding = PaddingValues(4.dp)) {
-                        Text(text = "FAV", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                    }
-                }
-                Text(text = "G I V A R O", color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 6.sp)
-                IconButton(onClick = { currentScreen = "playlist" }, modifier = Modifier.size(36.dp)) {
-                    Text(text = "☰", color = accentColor, fontSize = 18.sp)
-                }
-            }
-
-            // Capa de Álbum Central (Estilo Premium da Imagem)
-            Box(
-                modifier = Modifier.size(220.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF0A0A0A)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (albumArtBitmap != null) {
-                    Image(bitmap = albumArtBitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                        Text(text = "WAV 192 kHz / 24 bit", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(text = currentTrack.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(text = currentTrack.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
-                    }
-                }
-            }
-
-            // Bloco de Controlos e Informações Harmonizado
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                
-                // Hi-Res Badge & Metadados
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth(0.82f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier.clip(RoundedCornerShape(3.dp)).background(Color(0xFF221A00)).padding(horizontal = 4.dp, vertical = 1.dp)
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF030303))) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            
+            // CONTEÚDO PRINCIPAL (Muda consoante a tela selecionada)
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when (currentScreen) {
+                    "player" -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Top Bar
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = "HR", color = accentColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = { currentScreen = "equalizer" }, contentPadding = PaddingValues(2.dp)) {
+                                        Text(text = "EQ", color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    TextButton(onClick = { currentScreen = "favorites" }, contentPadding = PaddingValues(2.dp)) {
+                                        Text(text = "FAV", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                    }
+                                }
+                                Text(text = "G I V A R O", color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 6.sp)
+                                IconButton(onClick = { currentScreen = "settings" }, modifier = Modifier.size(36.dp)) {
+                                    Text(text = "⚙", color = Color.Gray, fontSize = 18.sp)
+                                }
                             }
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = currentTrack.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
+
+                            // Capa de Álbum
+                            Box(
+                                modifier = Modifier.size(230.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF0A0A0A)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (albumArtBitmap != null) {
+                                    Image(bitmap = albumArtBitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                } else {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+                                        Text(text = "WAV 192 kHz / 24 bit", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(text = currentTrack.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(text = currentTrack.artist, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                                    }
+                                }
+                            }
+
+                            // Bloco de Controlos e Metadados
+                            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth(0.82f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(modifier = Modifier.clip(RoundedCornerShape(3.dp)).background(Color(0xFF221A00)).padding(horizontal = 4.dp, vertical = 1.dp)) {
+                                                Text(text = "HR", color = accentColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(text = currentTrack.artist, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(text = currentTrack.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(text = "Digital Music Player  •  ${currentIndex + 1}/${playlist.size}", color = Color.DarkGray, fontSize = 10.sp)
+                                    }
+
+                                    IconButton(onClick = {
+                                        val set = favoriteTrackIds.toMutableSet()
+                                        if (isCurrentFavorite) set.remove(currentTrack.id) else set.add(currentTrack.id)
+                                        favoriteTrackIds = set
+                                    }) {
+                                        Text(text = if (isCurrentFavorite) "♥" else "♡", color = if (isCurrentFavorite) accentColor else Color.DarkGray, fontSize = 22.sp)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                val totalMs = currentTrack.durationSec * 1000L
+                                val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
+                                
+                                Slider(
+                                    value = progressFraction,
+                                    onValueChange = { fraction ->
+                                        val target = (fraction * totalMs).toLong()
+                                        currentPositionMs = target
+                                        try { mediaPlayer.seekTo(target.toInt()) } catch (e: Exception) {}
+                                    },
+                                    colors = SliderDefaults.colors(thumbColor = accentColor, activeTrackColor = accentColor, inactiveTrackColor = Color(0xFF1C1C1C)),
+                                    modifier = Modifier.height(10.dp)
+                                )
+
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    val secs = (currentPositionMs / 1000).toInt()
+                                    Text(text = String.format("%02d:%02d", secs / 60, secs % 60), color = Color.Gray, fontSize = 10.sp)
+                                    Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 10.sp)
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = "VOL", color = Color.DarkGray, fontSize = 9.sp, letterSpacing = 2.sp)
+                                    Slider(
+                                        value = volume,
+                                        onValueChange = { volume = it; mediaPlayer.setVolume(volume, volume) },
+                                        modifier = Modifier.fillMaxWidth(0.9f).height(10.dp),
+                                        colors = SliderDefaults.colors(thumbColor = accentColor.copy(alpha = 0.7f), activeTrackColor = accentColor.copy(alpha = 0.5f), inactiveTrackColor = Color(0xFF141414))
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFF121212)).clickable { repeatMode = (repeatMode + 1) % 3 }, contentAlignment = Alignment.Center) {
+                                        Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF121212)).clickable {
+                                        currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
+                                        currentPositionMs = 0L
+                                        isPlaying = true
+                                    }, contentAlignment = Alignment.Center) {
+                                        Text(text = "◀◀", color = Color.LightGray, fontSize = 12.sp)
+                                    }
+                                    Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(27.dp)).background(accentColor).clickable { isPlaying = !isPlaying }, contentAlignment = Alignment.Center) {
+                                        Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF121212)).clickable {
+                                        currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
+                                        currentPositionMs = 0L
+                                        isPlaying = true
+                                    }, contentAlignment = Alignment.Center) {
+                                        Text(text = "▶▶", color = Color.LightGray, fontSize = 12.sp)
+                                    }
+                                    Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFF121212)).clickable { isShuffleOn = !isShuffleOn }, contentAlignment = Alignment.Center) {
+                                        Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
                         }
-                        Spacer(modifier = Modifier.height(3.dp))
-                        Text(text = currentTrack.title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(text = "Digital Music Player  •  ${currentIndex + 1}/${playlist.size}", color = Color.DarkGray, fontSize = 10.sp)
                     }
 
-                    IconButton(
-                        onClick = {
-                            val set = favoriteTrackIds.value.toMutableSet()
-                            if (isCurrentFavorite) set.remove(currentTrack.id) else set.add(currentTrack.id)
-                            favoriteTrackIds.value = set
+                    "equalizer" -> {
+                        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "←", color = Color.White, fontSize = 18.sp, modifier = Modifier.clickable { currentScreen = "player" })
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(text = "EQUALIZADOR", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                }
+                            }
+
+                            // Presets
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                presets.forEachIndexed { idx, p ->
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(if (idx == selectedPreset) accentColor else Color(0xFF121212)).clickable { selectedPreset = idx }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(text = p, color = if (idx == selectedPreset) Color.Black else Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Gráfico / Bands do Equalizador
+                            Row(modifier = Modifier.fillMaxWidth().height(160.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                                val freqs = listOf("60", "170", "310", "600", "1K", "3K", "6K", "12K", "14K", "16K")
+                                freqs.forEach { freq ->
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Box(modifier = Modifier.width(6.dp).height(120.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFF151515)), contentAlignment = Alignment.BottomCenter) {
+                                            Box(modifier = Modifier.fillMaxWidth().height((40..110).random().dp).background(accentColor))
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(text = freq, color = Color.Gray, fontSize = 9.sp)
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Toggles Adicionais
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF0C0C0C)).padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "Reforço de graves", color = Color.White, fontSize = 13.sp)
+                                    Switch(checked = bassBoostEnabled, onCheckedChange = { bassBoostEnabled = it }, colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = accentColor))
+                                }
+                                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF0C0C0C)).padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "Virtualizador de som", color = Color.White, fontSize = 13.sp)
+                                    Switch(checked = virtualizerEnabled, onCheckedChange = { virtualizerEnabled = it }, colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = accentColor))
+                                }
+                                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF0C0C0C)).padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "Equalização de volume", color = Color.White, fontSize = 13.sp)
+                                    Switch(checked = volumeEqEnabled, onCheckedChange = { volumeEqEnabled = it }, colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = accentColor))
+                                }
+                            }
                         }
-                    ) {
-                        Text(text = if (isCurrentFavorite) "♥" else "♡", color = if (isCurrentFavorite) accentColor else Color.DarkGray, fontSize = 22.sp)
                     }
-                }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                    "playlist" -> {
+                        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "←", color = Color.White, fontSize = 18.sp, modifier = Modifier.clickable { currentScreen = "player" })
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(text = "PLAYLIST", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                }
+                                Text(text = "🔍", fontSize = 16.sp)
+                            }
 
-                // Barra de Progresso Fina
-                val totalMs = currentTrack.durationSec * 1000L
-                val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
-                
-                Slider(
-                    value = progressFraction,
-                    onValueChange = { fraction ->
-                        val target = (fraction * totalMs).toLong()
-                        currentPositionMs = target
-                        try { mediaPlayer.seekTo(target.toInt()) } catch (e: Exception) {}
-                    },
-                    colors = SliderDefaults.colors(thumbColor = accentColor, activeTrackColor = accentColor, inactiveTrackColor = Color(0xFF1C1C1C)),
-                    modifier = Modifier.height(12.dp)
-                )
+                            // Categorias
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                listOf("Todas", "Álbuns", "Artistas", "Pastas").forEach { cat ->
+                                    val isSel = cat == playlistCategory
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(if (isSel) accentColor else Color(0xFF121212)).clickable { playlistCategory = cat }.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(text = cat, color = if (isSel) Color.Black else Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
 
-                // Tempos
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    val secs = (currentPositionMs / 1000).toInt()
-                    Text(text = String.format("%02d:%02d", secs / 60, secs % 60), color = Color.Gray, fontSize = 10.sp)
-                    Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 10.sp)
-                }
+                            Spacer(modifier = Modifier.height(10.dp))
 
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Controlo de Volume
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(text = "VOL", color = Color.DarkGray, fontSize = 9.sp, letterSpacing = 2.sp)
-                    Slider(
-                        value = volume,
-                        onValueChange = { volume = it; mediaPlayer.setVolume(volume, volume) },
-                        modifier = Modifier.fillMaxWidth(0.9f).height(10.dp),
-                        colors = SliderDefaults.colors(thumbColor = accentColor.copy(alpha = 0.7f), activeTrackColor = accentColor.copy(alpha = 0.5f), inactiveTrackColor = Color(0xFF141414))
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Botões de Transporte Circular
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier.size(38.dp).clip(RoundedCornerShape(19.dp)).background(Color(0xFF121212)).clickable { repeatMode = (repeatMode + 1) % 3 },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                itemsIndexed(playlist) { idx, track ->
+                                    val isSelected = idx == currentIndex
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(if (isSelected) Color(0xFF181200) else Color(0xFF0A0A0A)).clickable {
+                                            currentIndex = idx
+                                            isPlaying = true
+                                            currentPositionMs = 0L
+                                            currentScreen = "player"
+                                        }.padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.fillMaxWidth(0.75f)) {
+                                            Text(text = track.title, color = if (isSelected) accentColor else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(text = track.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
+                                        }
+                                        Text(text = track.durationFormatted, color = Color.Gray, fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
                     }
-                    
-                    Box(
-                        modifier = Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)).background(Color(0xFF121212)).clickable {
-                            currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
-                            currentPositionMs = 0L
-                            isPlaying = true
-                        },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "◀◀", color = Color.LightGray, fontSize = 12.sp)
+
+                    "favorites" -> {
+                        val favList = playlist.filter { favoriteTrackIds.contains(it.id) }
+                        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "←", color = Color.White, fontSize = 18.sp, modifier = Modifier.clickable { currentScreen = "player" })
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(text = "FAVORITOS", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                }
+                                Text(text = "🔍", fontSize = 16.sp)
+                            }
+
+                            if (favList.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(text = "Nenhuma música favoritada", color = Color.Gray, fontSize = 13.sp)
+                                }
+                            } else {
+                                LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    itemsIndexed(favList) { _, track ->
+                                        val origIdx = playlist.indexOf(track)
+                                        val isSelected = origIdx == currentIndex
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(if (isSelected) Color(0xFF181200) else Color(0xFF0A0A0A)).clickable {
+                                                currentIndex = origIdx
+                                                isPlaying = true
+                                                currentPositionMs = 0L
+                                                currentScreen = "player"
+                                            }.padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.fillMaxWidth(0.75f)) {
+                                                Text(text = track.title, color = if (isSelected) accentColor else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(text = track.artist, color = Color.Gray, fontSize = 11.sp, maxLines = 1)
+                                            }
+                                            Text(text = "♥", color = accentColor, fontSize = 14.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                    
-                    Box(
-                        modifier = Modifier.size(56.dp).clip(RoundedCornerShape(28.dp)).background(accentColor).clickable { isPlaying = !isPlaying },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    }
-                    
-                    Box(
-                        modifier = Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)).background(Color(0xFF121212)).clickable {
-                            currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
-                            currentPositionMs = 0L
-                            isPlaying = true
-                        },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "▶▶", color = Color.LightGray, fontSize = 12.sp)
-                    }
-                    
-                    Box(
-                        modifier = Modifier.size(38.dp).clip(RoundedCornerShape(19.dp)).background(Color(0xFF121212)).clickable { isShuffleOn = !isShuffleOn },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+
+                    "settings" -> {
+                        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "←", color = Color.White, fontSize = 18.sp, modifier = Modifier.clickable { currentScreen = "player" })
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(text = "CONFIGURAÇÕES", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                }
+                            }
+
+                            Text(text = "APARÊNCIA", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)).padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "Tema escuro", color = Color.White, fontSize = 13.sp)
+                                    Switch(checked = true, onCheckedChange = {}, colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = accentColor))
+                                }
+                                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)).padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "Modo de visualização", color = Color.White, fontSize = 13.sp)
+                                    Text(text = "Walkman >", color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            Text(text = "ÁUDIO", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)).padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "Qualidade de reprodução", color = Color.White, fontSize = 13.sp)
+                                    Text(text = "Alta (192 kHz) >", color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(30.dp))
+
+                            Text(text = "SOBRE", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF0A0A0A)).padding(16.dp)) {
+                                Column {
+                                    Text(text = "GIVARO", color = accentColor, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                    Text(text = "v1.0.0 • Digital High-Res Player", color = Color.Gray, fontSize = 11.sp)
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            // Barra de Navegação Inferior (Estilo da Imagem Conceito)
+            // BARRA DE NAVEGAÇÃO INFERIOR FIXA (Visível em todas as telas)
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                modifier = Modifier.fillMaxWidth().background(Color(0xFF050505)).padding(vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { currentScreen = "player" }) {
-                    Text(text = "🎵", fontSize = 18.sp)
+                    Text(text = "🎵", color = if (currentScreen == "player") accentColor else Color.Gray, fontSize = 18.sp)
                 }
                 IconButton(onClick = { currentScreen = "equalizer" }) {
-                    Text(text = "⏱", fontSize = 18.sp)
+                    Text(text = "⏱", color = if (currentScreen == "equalizer") accentColor else Color.Gray, fontSize = 18.sp)
                 }
                 IconButton(onClick = { currentScreen = "playlist" }) {
-                    Text(text = "☰", color = accentColor, fontSize = 20.sp)
+                    Text(text = "☰", color = if (currentScreen == "playlist") accentColor else Color.Gray, fontSize = 20.sp)
                 }
                 IconButton(onClick = { currentScreen = "favorites" }) {
-                    Text(text = "♥", fontSize = 18.sp)
+                    Text(text = "♥", color = if (currentScreen == "favorites") accentColor else Color.Gray, fontSize = 18.sp)
                 }
             }
         }
