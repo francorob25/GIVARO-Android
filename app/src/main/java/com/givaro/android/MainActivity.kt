@@ -42,6 +42,8 @@ private val Muted = Color(0xFF888888)
 private val Panel = Color(0xFF121212)
 private val Selected = Color(0xFF1E1A14)
 
+// Anotação adicionada para evitar falhas no build do GitHub Actions com APIs do Material 3
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,6 +85,7 @@ enum class AudioSource(val displayName: String) {
     YOUTUBE("YouTube")
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GivaroApp() {
     val context = LocalContext.current
@@ -131,7 +134,7 @@ fun GivaroApp() {
         "Vocal"
     )
 
-    // Leitura das músicas locais com filtro para ignorar áudios do WhatsApp e notas de voz
+    // Leitura das músicas locais com filtro seguro para ignorar áudios do WhatsApp e notas de voz
     val tracks = remember(permissionGranted) {
         val result = mutableListOf<Track>()
 
@@ -140,8 +143,7 @@ fun GivaroApp() {
                 MediaStore.Audio.Media._ID,
                 MediaStore.Audio.Media.TITLE,
                 MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.DURATION,
-                MediaStore.Audio.Media.DATA
+                MediaStore.Audio.Media.DURATION
             )
 
             context.contentResolver.query(
@@ -153,29 +155,25 @@ fun GivaroApp() {
             )?.use { cursor ->
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ARTIST)
                 val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
 
                 while (cursor.moveToNext()) {
-                    val filePath = cursor.getString(dataCol) ?: ""
+                    val id = cursor.getLong(idCol)
+                    val title = cursor.getString(titleCol) ?: "Título desconhecido"
+                    val artist = cursor.getString(artistCol) ?: "Artista desconhecido"
+                    val duration = cursor.getLong(durationCol)
 
-                    // Filtro ativo: descarta ficheiros de pastas do WhatsApp ou notas de voz
-                    val isWhatsAppAudio = filePath.contains("WhatsApp", ignoreCase = true) ||
-                                          filePath.contains("Voice Notes", ignoreCase = true) ||
-                                          filePath.contains("WhatsApp Audio", ignoreCase = true)
+                    val uri = ContentUris.withAppendedId(
+                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                        id
+                    )
 
-                    if (!isWhatsAppAudio) {
-                        val id = cursor.getLong(idCol)
-                        val title = cursor.getString(titleCol) ?: "Título desconhecido"
-                        val artist = cursor.getString(artistCol) ?: "Artista desconhecido"
-                        val duration = cursor.getLong(durationCol)
+                    // Filtro seguro para ignorar ficheiros do WhatsApp/notas de voz pelo título
+                    val isInvalid = title.contains("WhatsApp", ignoreCase = true) ||
+                                    title.contains("Voice Note", ignoreCase = true)
 
-                        val uri = ContentUris.withAppendedId(
-                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                            id
-                        )
-
+                    if (!isInvalid) {
                         result.add(
                             Track(
                                 id = id,
@@ -867,6 +865,7 @@ fun GivaroApp() {
 }
 
 // Barra de Seleção de Plataformas
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StreamingHubHeader(
     selectedSource: AudioSource,
