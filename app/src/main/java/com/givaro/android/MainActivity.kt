@@ -62,11 +62,12 @@ private data class Track(
 private data class Service(val name: String, val url: String, val screenKey: String)
 
 private val services = listOf(
-    Service("Apple", "https://music.apple.com", "apple"),
+    Service("Apple Music", "https://music.apple.com", "apple"),
     Service("Spotify", "https://open.spotify.com", "spotify"),
     Service("Deezer", "https://www.deezer.com", "deezer"),
-    Service("Amazon", "https://music.amazon.com", "amazon"),
-    Service("YouTube", "https://music.youtube.com", "youtube")
+    Service("Amazon Music", "https://music.amazon.com", "amazon"),
+    Service("YT Music", "https://music.youtube.com", "ytmusic"),
+    Service("YouTube", "https://www.youtube.com", "youtube")
 )
 
 class MainActivity : ComponentActivity() {
@@ -408,14 +409,14 @@ private fun GivaroScreen(
                     )
                 )
             )
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
 
-        // Cabeçalho
+        // Cabeçalho Principal Super Limpo e Elegante
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(44.dp),
+                .height(48.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -433,7 +434,7 @@ private fun GivaroScreen(
                 )
 
                 Text(
-                    "HUB STREAMING",
+                    "AUDIO HUB",
                     color = Amber,
                     fontSize = 9.sp,
                     letterSpacing = 2.sp
@@ -445,39 +446,24 @@ private fun GivaroScreen(
             }
         }
 
-        Spacer(Modifier.height(5.dp))
-
-        // Chips de Serviços de Streaming e Local
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ServiceChip("Local", screen == "player" || screen == "library") {
-                screen = "player"
-            }
-
-            services.forEach { service ->
-                ServiceChip(service.name, screen == service.screenKey, true) {
-                    screen = service.screenKey
-                }
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
 
         when (screen) {
 
-            // PLAYER LOCAL
+            // PLAYER LOCAL - Perfeitamente centrado e espaçado verticalmente
             "player" -> Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
 
+                // Capa Centralizada
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.72f)
+                        .fillMaxWidth(0.68f)
                         .aspectRatio(1f)
                         .clip(RoundedCornerShape(24.dp))
                         .background(
@@ -495,22 +481,22 @@ private fun GivaroScreen(
                         Text(
                             "EQ",
                             color = Amber,
-                            fontSize = 42.sp,
+                            fontSize = 40.sp,
                             fontWeight = FontWeight.Bold
                         )
 
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(6.dp))
 
                         Text(
                             "GIVARO",
                             color = White,
-                            fontSize = 25.sp,
+                            fontSize = 24.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 4.sp
                         )
 
                         Text(
-                            "PREMIUM AUDIO",
+                            "LOCAL AUDIO",
                             color = Amber,
                             fontSize = 9.sp,
                             letterSpacing = 2.sp
@@ -518,69 +504,77 @@ private fun GivaroScreen(
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
-
-                Text(
-                    track?.title ?: "Nenhuma música selecionada",
-                    color = White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
+                // Informações da Música
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
-                )
-
-                Text(
-                    track?.artist ?: "Escolha uma música da biblioteca",
-                    color = Muted,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Slider(
-                    value = if (duration > 0) {
-                        position.coerceIn(0f, duration.toFloat())
-                    } else {
-                        0f
-                    },
-                    onValueChange = { position = it },
-                    onValueChangeFinished = {
-                        try {
-                            player?.seekTo(position.toInt())
-                        } catch (_: Exception) {
-                        }
-                    },
-                    valueRange = 0f..duration.coerceAtLeast(1).toFloat(),
-                    enabled = track != null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(28.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        timeText(position.toLong()),
-                        color = Muted,
-                        fontSize = 10.sp
+                        track?.title ?: "Nenhuma música selecionada",
+                        color = White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
+                    Spacer(Modifier.height(2.dp))
+
                     Text(
-                        timeText(duration.toLong()),
+                        track?.artist ?: "Escolha uma música da biblioteca",
                         color = Muted,
-                        fontSize = 10.sp
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Spacer(Modifier.height(3.dp))
+                // Barra de Progresso e Tempos
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Slider(
+                        value = if (duration > 0) {
+                            position.coerceIn(0f, duration.toFloat())
+                        } else {
+                            0f
+                        },
+                        onValueChange = { position = it },
+                        onValueChangeFinished = {
+                            try {
+                                player?.seekTo(position.toInt())
+                            } catch (_: Exception) {
+                            }
+                        },
+                        valueRange = 0f..duration.coerceAtLeast(1).toFloat(),
+                        enabled = track != null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(26.dp)
+                    )
 
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            timeText(position.toLong()),
+                            color = Muted,
+                            fontSize = 10.sp
+                        )
+
+                        Text(
+                            timeText(duration.toLong()),
+                            color = Muted,
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+
+                // Controlos de Reprodução
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = { shuffle = !shuffle }) {
@@ -623,6 +617,7 @@ private fun GivaroScreen(
                     }
                 }
 
+                // Controlo de Volume e Favorito
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -634,7 +629,8 @@ private fun GivaroScreen(
                         onValueChange = { volume = it },
                         modifier = Modifier
                             .weight(1f)
-                            .height(30.dp)
+                            .height(28.dp)
+                            .padding(horizontal = 8.dp)
                     )
 
                     TextButton(onClick = { isFavorite = !isFavorite }) {
@@ -646,12 +642,11 @@ private fun GivaroScreen(
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
-
+                // Botão de Biblioteca
                 Button(
                     onClick = { screen = "library" },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Panel,
                         contentColor = Amber
@@ -659,7 +654,8 @@ private fun GivaroScreen(
                 ) {
                     Text(
                         if (tracks.isEmpty()) "CARREGAR MINHAS MÚSICAS"
-                        else "ABRIR BIBLIOTECA"
+                        else "ABRIR BIBLIOTECA",
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -809,52 +805,66 @@ private fun GivaroScreen(
                 )
             }
 
-            // MENU
-            "menu" -> Column(Modifier.fillMaxSize()) {
+            // MENU DE NAVEGAÇÃO LIMPO (Onde escolhes o streaming ou local)
+            "menu" -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { screen = "player" }) {
                         Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Text(
-                        "MENU GIVARO",
+                        "MENU DE NAVEGAÇÃO",
                         color = White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
-                MenuRow("Reprodutor", "Voltar ao player") {
+                MenuRow("Reprodutor Local", "Ouvir músicas do telemóvel") {
                     screen = "player"
                 }
 
-                MenuRow("Biblioteca", "Músicas do dispositivo") {
+                MenuRow("Biblioteca Local", "Gerir faixas guardadas") {
                     screen = "library"
                 }
 
-                MenuRow("Equalizador", "Opções de áudio") {
+                MenuRow("Equalizador", "Definições de áudio") {
                     screen = "equalizer"
                 }
 
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    "SERVIÇOS DE STREAMING",
+                    color = Amber,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                )
+
                 services.forEach { service ->
-                    MenuRow(
-                        service.name,
-                        "Abrir player web integrado"
-                    ) {
+                    MenuRow(service.name, "Abrir player integrado") {
                         screen = service.screenKey
                     }
                 }
             }
 
-            // STREAMING WEBVIEWS INTEGRADOS (Layout Imersivo sem margens pesadas)
+            // STREAMING WEBVIEWS INTEGRADOS COM TRANSIÇÃO SUAVE
             else -> {
                 val currentService = services.find { it.screenKey == screen }
                 if (currentService != null) {
                     StreamingWebViewScreen(
+                        serviceName = currentService.name,
                         url = currentService.url,
-                        onBack = { screen = "player" }
+                        onBack = { screen = "menu" }
                     )
                 }
             }
@@ -863,34 +873,40 @@ private fun GivaroScreen(
 }
 
 @Composable
-fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
+fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit) {
     var isLoaded by remember(url) { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
             .background(Black),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Barra de topo interna limpa e integrada
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Panel)
-                .padding(horizontal = 8.dp, vertical = 2.dp),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Panel, Black)
+                    )
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text("‹ Voltar", color = Amber, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("‹ Menu", color = Amber, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.weight(1f))
             Text(
-                "MODO HUB",
-                color = Muted,
-                fontSize = 10.sp,
+                serviceName.uppercase(),
+                color = White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp
             )
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(48.dp))
         }
 
         Box(
@@ -898,6 +914,8 @@ fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
                 .fillMaxWidth()
                 .weight(1f)
                 .background(Black)
+                .padding(horizontal = 2.dp)
+                .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
         ) {
             AndroidView(
                 factory = { ctx ->
@@ -913,7 +931,6 @@ fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
                             cacheMode = WebSettings.LOAD_DEFAULT
                             mediaPlaybackRequiresUserGesture = false
                             
-                            // User-Agent de telemóvel moderno
                             userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
                         }
 
@@ -963,34 +980,6 @@ fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
 }
 
 @Composable
-private fun ServiceChip(
-    label: String,
-    selected: Boolean,
-    compact: Boolean = false,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (selected) Amber else Panel)
-            .clickable(onClick = onClick)
-            .padding(
-                horizontal = if (compact) 7.dp else 11.dp,
-                vertical = 9.dp
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            label,
-            color = if (selected) Black else White,
-            fontSize = if (compact) 9.sp else 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
 private fun MenuRow(
     title: String,
     subtitle: String,
@@ -999,18 +988,19 @@ private fun MenuRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 5.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
             .background(Panel)
             .clickable(onClick = onClick)
-            .padding(15.dp),
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
             Text(
                 title,
                 color = White,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp
             )
 
             Text(
@@ -1020,7 +1010,7 @@ private fun MenuRow(
             )
         }
 
-        Text("›", color = Amber, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text("›", color = Amber, fontSize = 24.sp, fontWeight = FontWeight.Bold)
     }
 }
 
