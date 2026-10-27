@@ -61,15 +61,15 @@ private data class Track(
     val uri: Uri
 )
 
-private data class Service(val name: String, val url: String, val screenKey: String)
+private data class Service(val name: String, val url: String, val screenKey: String, val description: String)
 
 private val services = listOf(
-    Service("Apple Music", "https://music.apple.com", "apple"),
-    Service("Spotify", "https://open.spotify.com", "spotify"),
-    Service("Deezer", "https://www.deezer.com", "deezer"),
-    Service("Amazon Music", "https://music.amazon.com", "amazon"),
-    Service("YT Music", "https://music.youtube.com", "ytmusic"),
-    Service("YouTube", "https://m.youtube.com", "youtube")
+    Service("YouTube", "https://m.youtube.com", "youtube", "Vídeos, clipes e concertos em destaque"),
+    Service("YT Music", "https://music.youtube.com", "ytmusic", "Músicas e mixes personalizados"),
+    Service("Spotify", "https://open.spotify.com", "spotify", "As tuas playlists e álbuns favoritos"),
+    Service("Apple Music", "https://music.apple.com", "apple", "Catálogo espacial e faixas lossless"),
+    Service("Deezer", "https://www.deezer.com", "deezer", "Flow e sugestões diárias de áudio"),
+    Service("Amazon Music", "https://music.amazon.com", "amazon", "Streaming de alta qualidade")
 )
 
 class MainActivity : ComponentActivity() {
@@ -151,7 +151,7 @@ private fun GivaroScreen(
     var volume by remember { mutableFloatStateOf(0.8f) }
     var position by remember { mutableFloatStateOf(0f) }
     var duration by remember { mutableIntStateOf(0) }
-    var screen by remember { mutableStateOf("player") }
+    var screen by remember { mutableStateOf("menu") } // Começa diretamente no Hub estilo Google TV / Menu Principal
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
     var loadKey by remember { mutableIntStateOf(0) }
     var isFavorite by remember { mutableStateOf(false) }
@@ -414,7 +414,7 @@ private fun GivaroScreen(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
 
-        // Cabeçalho Principal
+        // Cabeçalho Principal Estilo Smart TV / Hub
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -436,15 +436,15 @@ private fun GivaroScreen(
                 )
 
                 Text(
-                    "AUDIO HUB",
+                    "GOOGLE TV STYLE HUB",
                     color = Amber,
-                    fontSize = 9.sp,
+                    fontSize = 8.sp,
                     letterSpacing = 2.sp
                 )
             }
 
             TextButton(onClick = { screen = "menu" }) {
-                Text("☰", color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("🏠", color = White, fontSize = 20.sp)
             }
         }
 
@@ -801,62 +801,82 @@ private fun GivaroScreen(
                 )
             }
 
-            // MENU DE NAVEGAÇÃO (Com scroll vertical para mostrar todos os serviços incluindo o YouTube)
+            // MENU PRINCIPAL (ESTILO GOOGLE TV HUB DE STREAMING)
             "menu" -> Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { screen = "player" }) {
-                        Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                // Cartão de Destaque / Início Rápido (Estilo Smart TV Banner)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFF382512), Panel)
+                            )
+                        )
+                        .clickable { screen = "player" }
+                        .padding(16.dp)
+                ) {
+                    Column {
+                        Text("REPRODUTOR LOCAL", color = Amber, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            track?.title ?: "Ouvir músicas do telemóvel",
+                            color = White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            track?.artist ?: "Toque para abrir o player de áudio integrado",
+                            color = Muted,
+                            fontSize = 12.sp
+                        )
                     }
-
-                    Text(
-                        "MENU DE NAVEGAÇÃO",
-                        color = White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
 
                 Spacer(Modifier.height(4.dp))
 
-                MenuRow("Reprodutor Local", "Ouvir músicas do telemóvel") {
-                    screen = "player"
-                }
-
-                MenuRow("Biblioteca Local", "Gerir faixas guardadas") {
-                    screen = "library"
-                }
-
-                MenuRow("Equalizador", "Definições de áudio") {
-                    screen = "equalizer"
-                }
-
-                Spacer(Modifier.height(10.dp))
-
                 Text(
-                    "SERVIÇOS DE STREAMING",
+                    "CENTRAL DE STREAMING (GOOGLE TV HUB)",
                     color = Amber,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                    modifier = Modifier.padding(start = 4.dp)
                 )
 
+                // Grelha de Plataformas (Estilo Cartões de TV)
                 services.forEach { service ->
-                    MenuRow(service.name, "Abrir player integrado") {
+                    TvStyleCard(
+                        title = service.name,
+                        subtitle = service.description
+                    ) {
                         screen = service.screenKey
                     }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                MenuRow("Equalizador de Áudio", "Definições de som do sistema") {
+                    screen = "equalizer"
+                }
+
+                MenuRow("Minha Biblioteca", "Gerir faixas guardadas no dispositivo") {
+                    screen = "library"
                 }
                 
                 Spacer(Modifier.height(20.dp))
             }
 
-            // STREAMING WEBVIEWS INTEGRADOS (Sem bordas, ocupação total a 100%)
+            // STREAMING WEBVIEWS INTEGRADOS (Ocupação Total 100%)
             else -> {
                 val currentService = services.find { service -> service.screenKey == screen }
                 if (currentService != null) {
@@ -886,11 +906,11 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Panel)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text("‹ Menu", color = Amber, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("‹ Início", color = Amber, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.weight(1f))
             Text(
@@ -904,7 +924,7 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
             Spacer(Modifier.width(48.dp))
         }
 
-        // WebView a ocupar 100% do espaço sem molduras
+        // WebView a ocupar 100% do ecrã com viewport expansivo
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -924,6 +944,12 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
                             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                             cacheMode = WebSettings.LOAD_DEFAULT
                             mediaPlaybackRequiresUserGesture = false
+                            
+                            useWideViewPort = true
+                            loadWithOverviewMode = true
+                            setSupportZoom(false)
+                            builtInZoomControls = false
+                            displayZoomControls = false
                             
                             userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
                         }
@@ -974,6 +1000,43 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
 }
 
 @Composable
+private fun TvStyleCard(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Panel)
+            .clickable(onClick = onClick)
+            .padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    color = White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    subtitle,
+                    color = Muted,
+                    fontSize = 12.sp
+                )
+            }
+            Text("▶", color = Amber, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 private fun MenuRow(
     title: String,
     subtitle: String,
@@ -982,11 +1045,10 @@ private fun MenuRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Panel)
             .clickable(onClick = onClick)
-            .padding(16.dp),
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
@@ -994,17 +1056,15 @@ private fun MenuRow(
                 title,
                 color = White,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp
+                fontSize = 14.sp
             )
-
             Text(
                 subtitle,
                 color = Muted,
-                fontSize = 12.sp
+                fontSize = 11.sp
             )
         }
-
-        Text("›", color = Amber, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("›", color = Amber, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     }
 }
 
