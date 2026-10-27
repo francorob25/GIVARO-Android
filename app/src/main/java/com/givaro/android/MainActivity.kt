@@ -32,6 +32,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -67,7 +68,7 @@ private val services = listOf(
     Service("Deezer", "https://www.deezer.com", "deezer"),
     Service("Amazon Music", "https://music.amazon.com", "amazon"),
     Service("YT Music", "https://music.youtube.com", "ytmusic"),
-    Service("YouTube", "https://www.youtube.com", "youtube")
+    Service("YouTube", "https://m.youtube.com", "youtube")
 )
 
 class MainActivity : ComponentActivity() {
@@ -412,7 +413,7 @@ private fun GivaroScreen(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
 
-        // Cabeçalho Principal Super Limpo e Elegante
+        // Cabeçalho Principal
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -450,7 +451,7 @@ private fun GivaroScreen(
 
         when (screen) {
 
-            // PLAYER LOCAL - Perfeitamente centrado e espaçado verticalmente
+            // PLAYER LOCAL
             "player" -> Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -460,7 +461,6 @@ private fun GivaroScreen(
             ) {
                 Spacer(Modifier.height(2.dp))
 
-                // Capa Centralizada
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.68f)
@@ -504,7 +504,6 @@ private fun GivaroScreen(
                     }
                 }
 
-                // Informações da Música
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
@@ -531,7 +530,6 @@ private fun GivaroScreen(
                     )
                 }
 
-                // Barra de Progresso e Tempos
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Slider(
                         value = if (duration > 0) {
@@ -571,7 +569,6 @@ private fun GivaroScreen(
                     }
                 }
 
-                // Controlos de Reprodução
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -617,7 +614,6 @@ private fun GivaroScreen(
                     }
                 }
 
-                // Controlo de Volume e Favorito
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -642,7 +638,6 @@ private fun GivaroScreen(
                     }
                 }
 
-                // Botão de Biblioteca
                 Button(
                     onClick = { screen = "library" },
                     modifier = Modifier.fillMaxWidth(),
@@ -805,7 +800,7 @@ private fun GivaroScreen(
                 )
             }
 
-            // MENU DE NAVEGAÇÃO LIMPO (Onde escolhes o streaming ou local)
+            // MENU DE NAVEGAÇÃO
             "menu" -> Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -857,7 +852,7 @@ private fun GivaroScreen(
                 }
             }
 
-            // STREAMING WEBVIEWS INTEGRADOS COM TRANSIÇÃO SUAVE
+            // STREAMING WEBVIEWS INTEGRADOS COM BORDAS FUNDIDAS (FADE / SHADOW)
             else -> {
                 val currentService = services.find { it.screenKey == screen }
                 if (currentService != null) {
@@ -879,19 +874,25 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            .background(Black),
+            .shadow(16.dp, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(Panel, Black, Black)
+                )
+            ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Barra topo integrada com efeito de sombra e transição suave
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Panel, Black)
+                        listOf(Panel, Color(0xFF101115))
                     )
                 )
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
@@ -909,13 +910,25 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
             Spacer(Modifier.width(48.dp))
         }
 
+        // Faixa de desfoque/fusão visual para unir o painel superior ao conteúdo web
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF101115), Black)
+                    )
+                )
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .background(Black)
-                .padding(horizontal = 2.dp)
-                .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
+                .padding(horizontal = 4.dp)
+                .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
         ) {
             AndroidView(
                 factory = { ctx ->
@@ -931,7 +944,8 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
                             cacheMode = WebSettings.LOAD_DEFAULT
                             mediaPlaybackRequiresUserGesture = false
                             
-                            userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+                            // User-Agent estrito para forçar a versão mobile real de telemóvel
+                            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
                         }
 
                         CookieManager.getInstance().setAcceptCookie(true)
