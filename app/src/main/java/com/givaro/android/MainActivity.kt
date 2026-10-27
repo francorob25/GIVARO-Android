@@ -133,7 +133,7 @@ fun GivaroApp() {
         "Vocal"
     )
 
-    // Leitura das músicas locais com filtro seguro para ignorar áudios do WhatsApp e notas de voz
+    // Leitura das músicas locais com correção do campo ARTIST
     val tracks = remember(permissionGranted) {
         val result = mutableListOf<Track>()
 
@@ -154,7 +154,7 @@ fun GivaroApp() {
             )?.use { cursor ->
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ARTIST)
+                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
                 val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
 
                 while (cursor.moveToNext()) {
@@ -367,7 +367,6 @@ fun GivaroApp() {
 
             Spacer(Modifier.height(10.dp))
 
-            // Cabeçalho de Seleção de Fontes
             StreamingHubHeader(
                 selectedSource = selectedSource,
                 onSourceSelected = { selectedSource = it }
@@ -375,7 +374,6 @@ fun GivaroApp() {
 
             Spacer(Modifier.height(14.dp))
 
-            // Conteúdo dinâmico de acordo com a fonte escolhida
             when (selectedSource) {
                 AudioSource.LOCAL -> {
                     when (screen) {
@@ -833,7 +831,6 @@ fun GivaroApp() {
                     }
                 }
                 else -> {
-                    // Carrega o leitor web correspondente para cada serviço de streaming
                     StreamingWebViewScreen(url = selectedSource.url)
                 }
             }
@@ -874,7 +871,7 @@ fun StreamingHubHeader(
     }
 }
 
-// Ecrã Web Genérico para os Serviços de Streaming (Apple, Spotify, Deezer, Amazon, YouTube)
+// Ecrã Web Genérico para os Serviços de Streaming
 @Composable
 fun StreamingWebViewScreen(url: String) {
     var isLoaded by remember { mutableStateOf(false) }
