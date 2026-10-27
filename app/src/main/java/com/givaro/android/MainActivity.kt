@@ -1,4 +1,3 @@
-
 package com.givaro.android
 
 import android.Manifest
@@ -8,6 +7,8 @@ import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 
@@ -70,9 +73,20 @@ data class Track(
     val uri: android.net.Uri
 )
 
+// Fontes de áudio suportadas no Hub Givaro
+enum class AudioSource(val displayName: String) {
+    LOCAL("Local"),
+    APPLE("Apple Music"),
+    SPOTIFY("Spotify"),
+    DEEZER("Deezer"),
+    AMAZON("Amazon"),
+    YOUTUBE("YouTube")
+}
+
 @Composable
 fun GivaroApp() {
     val context = LocalContext.current
+    var selectedSource by remember { mutableStateOf(AudioSource.LOCAL) }
 
     val permission = remember {
         if (Build.VERSION.SDK_INT >= 33) {
@@ -117,6 +131,7 @@ fun GivaroApp() {
         "Vocal"
     )
 
+    // Leitura das músicas locais com filtro para ignorar áudios do WhatsApp e notas de voz
     val tracks = remember(permissionGranted) {
         val result = mutableListOf<Track>()
 
@@ -125,7 +140,8 @@ fun GivaroApp() {
                 MediaStore.Audio.Media._ID,
                 MediaStore.Audio.Media.TITLE,
                 MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.DURATION
+                MediaStore.Audio.Media.DURATION,
+                MediaStore.Audio.Media.DATA
             )
 
             context.contentResolver.query(
@@ -135,41 +151,41 @@ fun GivaroApp() {
                 null,
                 "${MediaStore.Audio.Media.TITLE} ASC"
             )?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media._ID
-                )
-                val titleCol = cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.TITLE
-                )
-                val artistCol = cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.ARTIST
-                )
-                val durationCol = cursor.getColumnIndexOrThrow(
-                    MediaStore.Audio.Media.DURATION
-                )
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
 
                 while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idCol)
-                    val title = cursor.getString(titleCol)
-                        ?: "Título desconhecido"
-                    val artist = cursor.getString(artistCol)
-                        ?: "Artista desconhecido"
-                    val duration = cursor.getLong(durationCol)
+                    val filePath = cursor.getString(dataCol) ?: ""
 
-                    val uri = ContentUris.withAppendedId(
-                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                        id
-                    )
+                    // Filtro ativo: descarta ficheiros de pastas do WhatsApp ou notas de voz
+                    val isWhatsAppAudio = filePath.contains("WhatsApp", ignoreCase = true) ||
+                                          filePath.contains("Voice Notes", ignoreCase = true) ||
+                                          filePath.contains("WhatsApp Audio", ignoreCase = true)
 
-                    result.add(
-                        Track(
-                            id = id,
-                            title = title,
-                            artist = artist,
-                            duration = duration,
-                            uri = uri
+                    if (!isWhatsAppAudio) {
+                        val id = cursor.getLong(idCol)
+                        val title = cursor.getString(titleCol) ?: "Título desconhecido"
+                        val artist = cursor.getString(artistCol) ?: "Artista desconhecido"
+                        val duration = cursor.getLong(durationCol)
+
+                        val uri = ContentUris.withAppendedId(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                            id
                         )
-                    )
+
+                        result.add(
+                            Track(
+                                id = id,
+                                title = title,
+                                artist = artist,
+                                duration = duration,
+                                uri = uri
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -333,7 +349,7 @@ fun GivaroApp() {
                         letterSpacing = 7.sp
                     )
                     Text(
-                        "PURE SOUND",
+                        "HUB STREAMING",
                         color = Muted,
                         fontSize = 8.sp,
                         letterSpacing = 3.sp
@@ -353,461 +369,567 @@ fun GivaroApp() {
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(10.dp))
 
-            when (screen) {
-                "equalizer" -> {
-                    Text(
-                        "AUDIO EQUALIZER",
-                        color = Color.White,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
+            // Cabeçalho de Seleção de Fontes
+            StreamingHubHeader(
+                selectedSource = selectedSource,
+                onSourceSelected = { selectedSource = it }
+            )
 
-                    Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(14.dp))
 
-                    Text(
-                        "Personalize sua experiência sonora",
-                        color = Muted,
-                        fontSize = 12.sp
-                    )
-
-                    Spacer(Modifier.height(24.dp))
-
-                    presets.forEachIndexed { i, name ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 5.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(
-                                    if (preset == i) Selected else Panel
-                                )
-                                .clickable { preset = i }
-                                .padding(18.dp),
-                            horizontalArrangement =
-                                Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                name,
-                                color = if (preset == i) Amber else Color.White,
-                                fontWeight = FontWeight.Medium
-                            )
-
-                            Text(
-                                if (preset == i) "●" else "›",
-                                color = Amber
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        "Os efeitos reais dependem do aparelho. " +
-                            "Estes perfis são apenas visuais nesta versão.",
-                        color = Muted,
-                        fontSize = 11.sp
-                    )
+            // Conteúdo dinâmico de acordo com a fonte escolhida
+            when (selectedSource) {
+                AudioSource.APPLE -> {
+                    AppleMusicScreen()
                 }
-
-                "playlist" -> {
-                    Text(
-                        "SUA BIBLIOTECA",
-                        color = Color.White,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = {
-                            Text(
-                                "Buscar música ou artista",
-                                color = Muted
-                            )
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Amber,
-                            unfocusedBorderColor = Selected,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            cursorColor = Amber
-                        )
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    if (!permissionGranted) {
-                        Button(
-                            onClick = {
-                                permissionLauncher.launch(permission)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Amber
-                            )
-                        ) {
-                            Text(
-                                "Permitir acesso às músicas",
-                                color = Color.Black
-                            )
-                        }
-                    } else {
-                        val filtered = tracks.filter {
-                            it.title.contains(query, ignoreCase = true) ||
-                                it.artist.contains(query, ignoreCase = true)
-                        }
-
-                        if (filtered.isEmpty()) {
-                            Text(
-                                "Nenhuma música encontrada.",
-                                color = Muted
-                            )
-                        } else {
-                            LazyColumn(
-                                verticalArrangement =
-                                    Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(filtered, key = { it.id }) { item ->
-                                    val originalIndex =
-                                        tracks.indexOfFirst { it.id == item.id }
-
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(13.dp))
-                                            .background(
-                                                if (originalIndex == safeIndex)
-                                                    Selected else Panel
-                                            )
-                                            .clickable {
-                                                index = originalIndex
-                                                position = 0L
-                                                playing = true
-                                                screen = "player"
-                                            }
-                                            .padding(14.dp),
-                                        verticalAlignment =
-                                            Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            Modifier
-                                                .size(44.dp)
-                                                .clip(
-                                                    RoundedCornerShape(10.dp)
-                                                )
-                                                .background(
-                                                    Color(0xFF30200D)
-                                                ),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                "♫",
-                                                color = Amber,
-                                                fontSize = 23.sp
-                                            )
-                                        }
-
-                                        Spacer(Modifier.width(12.dp))
-
-                                        Column(
-                                            Modifier.weight(1f)
-                                        ) {
-                                            Text(
-                                                item.title,
-                                                color = if (
-                                                    originalIndex == safeIndex
-                                                ) Amber else Color.White,
-                                                maxLines = 1,
-                                                overflow =
-                                                    TextOverflow.Ellipsis,
-                                                fontWeight =
-                                                    FontWeight.Medium
-                                            )
-
-                                            Text(
-                                                item.artist,
-                                                color = Muted,
-                                                fontSize = 12.sp,
-                                                maxLines = 1,
-                                                overflow =
-                                                    TextOverflow.Ellipsis
-                                            )
-                                        }
-
-                                        Text(
-                                            timeText(item.duration),
-                                            color = Muted,
-                                            fontSize = 11.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                else -> {
-                    Spacer(Modifier.weight(1f))
-
+                AudioSource.SPOTIFY, AudioSource.DEEZER, AudioSource.AMAZON, AudioSource.YOUTUBE -> {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        Color(0xFF38220A),
-                                        Color(0xFF15191B),
-                                        Color(0xFF080A0B)
-                                    )
-                                )
-                            ),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                Modifier
-                                    .size(130.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF251805)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "G",
-                                    color = Amber,
-                                    fontSize = 78.sp,
-                                    fontWeight = FontWeight.Light
-                                )
-                            }
-
-                            Spacer(Modifier.height(20.dp))
-
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "G I V A R O",
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                letterSpacing = 5.sp
+                                text = "${selectedSource.displayName} Hub",
+                                color = Amber,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
                             )
-
+                            Spacer(Modifier.height(8.dp))
                             Text(
-                                "PREMIUM AUDIO",
+                                text = "Integração pronta para carregar.",
                                 color = Muted,
-                                fontSize = 9.sp,
-                                letterSpacing = 3.sp
+                                fontSize = 12.sp
                             )
                         }
                     }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    if (!permissionGranted) {
-                        Button(
-                            onClick = {
-                                permissionLauncher.launch(permission)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Amber
-                            )
-                        ) {
+                }
+                AudioSource.LOCAL -> {
+                    when (screen) {
+                        "equalizer" -> {
                             Text(
-                                "Permitir acesso às músicas",
-                                color = Color.Black
+                                "AUDIO EQUALIZER",
+                                color = Color.White,
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
                             )
-                        }
 
-                        Spacer(Modifier.height(12.dp))
-                    }
+                            Spacer(Modifier.height(8.dp))
 
-                    Text(
-                        track?.title ?: "Nenhuma música selecionada",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                            Text(
+                                "Personalize sua experiência sonora",
+                                color = Muted,
+                                fontSize = 12.sp
+                            )
 
-                    Spacer(Modifier.height(5.dp))
+                            Spacer(Modifier.height(24.dp))
 
-                    Text(
-                        track?.artist ?: "Sua música, sua experiência",
-                        color = Muted,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                            presets.forEachIndexed { i, name ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 5.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(
+                                            if (preset == i) Selected else Panel
+                                        )
+                                        .clickable { preset = i }
+                                        .padding(18.dp),
+                                    horizontalArrangement =
+                                        Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        name,
+                                        color = if (preset == i) Amber else Color.White,
+                                        fontWeight = FontWeight.Medium
+                                    )
 
-                    Spacer(Modifier.height(16.dp))
-
-                    Slider(
-                        value = if (duration > 0L) {
-                            (position.toFloat() / duration)
-                                .coerceIn(0f, 1f)
-                        } else {
-                            0f
-                        },
-                        onValueChange = { fraction ->
-                            position = (fraction * duration).toLong()
-                            try {
-                                player.seekTo(position.toInt())
-                            } catch (_: Exception) {
-                                // Aguarda o player ficar pronto.
+                                    Text(
+                                        if (preset == i) "●" else "›",
+                                        color = Amber
+                                    )
+                                }
                             }
-                        },
-                        colors = SliderDefaults.colors(
-                            thumbColor = Amber,
-                            activeTrackColor = Amber,
-                            inactiveTrackColor = Selected
-                        )
-                    )
 
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            timeText(position),
-                            color = Muted,
-                            fontSize = 11.sp
-                        )
-                        Text(
-                            timeText(duration),
-                            color = Muted,
-                            fontSize = 11.sp
-                        )
-                    }
+                            Spacer(Modifier.height(12.dp))
 
-                    Spacer(Modifier.height(8.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "VOL",
-                            color = Muted,
-                            fontSize = 10.sp,
-                            letterSpacing = 2.sp
-                        )
-
-                        Slider(
-                            value = volume,
-                            onValueChange = { volume = it },
-                            modifier = Modifier.weight(1f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Amber,
-                                activeTrackColor = Amber,
-                                inactiveTrackColor = Selected
-                            )
-                        )
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = { shuffle = !shuffle }
-                        ) {
                             Text(
-                                "⤮",
-                                color = if (shuffle) Amber else Muted,
-                                fontSize = 22.sp
+                                "Os efeitos reais dependem do aparelho. " +
+                                    "Estes perfis são apenas visuais nesta versão.",
+                                color = Muted,
+                                fontSize = 11.sp
                             )
                         }
 
-                        PlayerButton("◀◀", ::previousTrack)
+                        "playlist" -> {
+                            Text(
+                                "SUA BIBLIOTECA",
+                                color = Color.White,
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            )
 
-                        Box(
-                            Modifier
-                                .size(68.dp)
-                                .clip(CircleShape)
-                                .background(Amber)
-                                .clickable {
-                                    if (tracks.isEmpty()) {
-                                        if (!permissionGranted) {
-                                            permissionLauncher.launch(permission)
-                                        } else {
-                                            screen = "playlist"
-                                        }
-                                    } else {
-                                        playing = !playing
-                                    }
+                            Spacer(Modifier.height(12.dp))
+
+                            OutlinedTextField(
+                                value = query,
+                                onValueChange = { query = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                placeholder = {
+                                    Text(
+                                        "Buscar música ou artista",
+                                        color = Muted
+                                    )
                                 },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                if (playing) "Ⅱ" else "▶",
-                                color = Color.Black,
-                                fontSize = 27.sp,
-                                fontWeight = FontWeight.Bold
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Amber,
+                                    unfocusedBorderColor = Selected,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    cursorColor = Amber
+                                )
                             )
-                        }
 
-                        PlayerButton("▶▶", ::nextTrack)
+                            Spacer(Modifier.height(12.dp))
 
-                        TextButton(
-                            onClick = { repeatOne = !repeatOne }
-                        ) {
-                            Text(
-                                if (repeatOne) "1" else "↻",
-                                color = if (repeatOne) Amber else Muted,
-                                fontSize = 22.sp
-                            )
-                        }
-                    }
+                            if (!permissionGranted) {
+                                Button(
+                                    onClick = {
+                                        permissionLauncher.launch(permission)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Amber
+                                    )
+                                ) {
+                                    Text(
+                                        "Permitir acesso às músicas",
+                                        color = Color.Black
+                                    )
+                                }
+                            } else {
+                                val filtered = tracks.filter {
+                                    it.title.contains(query, ignoreCase = true) ||
+                                        it.artist.contains(query, ignoreCase = true)
+                                }
 
-                    Spacer(Modifier.weight(1f))
+                                if (filtered.isEmpty()) {
+                                    Text(
+                                        "Nenhuma música encontrada.",
+                                        color = Muted
+                                    )
+                                } else {
+                                    LazyColumn(
+                                        verticalArrangement =
+                                            Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(filtered, key = { it.id }) { item ->
+                                            val originalIndex =
+                                                tracks.indexOfFirst { it.id == item.id }
 
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        TextButton(
-                            onClick = {
-                                track?.let {
-                                    favorites = if (it.id in favorites) {
-                                        favorites - it.id
-                                    } else {
-                                        favorites + it.id
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(13.dp))
+                                                    .background(
+                                                        if (originalIndex == safeIndex)
+                                                            Selected else Panel
+                                                    )
+                                                    .clickable {
+                                                        index = originalIndex
+                                                        position = 0L
+                                                        playing = true
+                                                        screen = "player"
+                                                    }
+                                                    .padding(14.dp),
+                                                verticalAlignment =
+                                                    Alignment.CenterVertically
+                                            ) {
+                                                Box(
+                                                    Modifier
+                                                        .size(44.dp)
+                                                        .clip(
+                                                            RoundedCornerShape(10.dp)
+                                                        )
+                                                        .background(
+                                                            Color(0xFF30200D)
+                                                        ),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        "♫",
+                                                        color = Amber,
+                                                        fontSize = 23.sp
+                                                    )
+                                                }
+
+                                                Spacer(Modifier.width(12.dp))
+
+                                                Column(
+                                                    Modifier.weight(1f)
+                                                ) {
+                                                    Text(
+                                                        item.title,
+                                                        color = if (
+                                                            originalIndex == safeIndex
+                                                        ) Amber else Color.White,
+                                                        maxLines = 1,
+                                                        overflow =
+                                                            TextOverflow.Ellipsis,
+                                                        fontWeight =
+                                                            FontWeight.Medium
+                                                    )
+
+                                                    Text(
+                                                        item.artist,
+                                                        color = Muted,
+                                                        fontSize = 12.sp,
+                                                        maxLines = 1,
+                                                        overflow =
+                                                            TextOverflow.Ellipsis
+                                                    )
+                                                }
+
+                                                Text(
+                                                    timeText(item.duration),
+                                                    color = Muted,
+                                                    fontSize = 11.sp
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
-                        ) {
-                            Text(
-                                if (
-                                    track != null &&
-                                    track.id in favorites
+                        }
+
+                        else -> {
+                            Spacer(Modifier.weight(1f))
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(
+                                                Color(0xFF38220A),
+                                                Color(0xFF15191B),
+                                                Color(0xFF080A0B)
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    "♥  FAVORITO"
-                                } else {
-                                    "♡  ADICIONAR AOS FAVORITOS"
-                                },
-                                color = if (
-                                    track != null &&
-                                    track.id in favorites
-                                ) Amber else Muted,
-                                fontSize = 11.sp,
-                                letterSpacing = 1.sp
+                                    Box(
+                                        Modifier
+                                            .size(130.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF251805)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "G",
+                                            color = Amber,
+                                            fontSize = 78.sp,
+                                            fontWeight = FontWeight.Light
+                                        )
+                                    }
+
+                                    Spacer(Modifier.height(20.dp))
+
+                                    Text(
+                                        "G I V A R O",
+                                        color = Color.White,
+                                        fontSize = 16.sp,
+                                        letterSpacing = 5.sp
+                                    )
+
+                                    Text(
+                                        "PREMIUM AUDIO",
+                                        color = Muted,
+                                        fontSize = 9.sp,
+                                        letterSpacing = 3.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(24.dp))
+
+                            if (!permissionGranted) {
+                                Button(
+                                    onClick = {
+                                        permissionLauncher.launch(permission)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Amber
+                                    )
+                                ) {
+                                    Text(
+                                        "Permitir acesso às músicas",
+                                        color = Color.Black
+                                    )
+                                }
+
+                                Spacer(Modifier.height(12.dp))
+                            }
+
+                            Text(
+                                track?.title ?: "Nenhuma música selecionada",
+                                color = Color.White,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
+
+                            Spacer(Modifier.height(5.dp))
+
+                            Text(
+                                track?.artist ?: "Sua música, sua experiência",
+                                color = Muted,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(Modifier.height(16.dp))
+
+                            Slider(
+                                value = if (duration > 0L) {
+                                    (position.toFloat() / duration)
+                                        .coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                },
+                                onValueChange = { fraction ->
+                                    position = (fraction * duration).toLong()
+                                    try {
+                                        player.seekTo(position.toInt())
+                                    } catch (_: Exception) {
+                                        // Aguarda o player ficar pronto.
+                                    }
+                                },
+                                colors = SliderDefaults.colors(
+                                    thumbColor = Amber,
+                                    activeTrackColor = Amber,
+                                    inactiveTrackColor = Selected
+                                )
+                            )
+
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    timeText(position),
+                                    color = Muted,
+                                    fontSize = 11.sp
+                                )
+                                Text(
+                                    timeText(duration),
+                                    color = Muted,
+                                    fontSize = 11.sp
+                                )
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "VOL",
+                                    color = Muted,
+                                    fontSize = 10.sp,
+                                    letterSpacing = 2.sp
+                                )
+
+                                Slider(
+                                    value = volume,
+                                    onValueChange = { volume = it },
+                                    modifier = Modifier.weight(1f),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = Amber,
+                                        activeTrackColor = Amber,
+                                        inactiveTrackColor = Selected
+                                    )
+                                )
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    onClick = { shuffle = !shuffle }
+                                ) {
+                                    Text(
+                                        "⤮",
+                                        color = if (shuffle) Amber else Muted,
+                                        fontSize = 22.sp
+                                    )
+                                }
+
+                                PlayerButton("◀◀", ::previousTrack)
+
+                                Box(
+                                    Modifier
+                                        .size(68.dp)
+                                        .clip(CircleShape)
+                                        .background(Amber)
+                                        .clickable {
+                                            if (tracks.isEmpty()) {
+                                                if (!permissionGranted) {
+                                                    permissionLauncher.launch(permission)
+                                                } else {
+                                                    screen = "playlist"
+                                                }
+                                            } else {
+                                                playing = !playing
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        if (playing) "Ⅱ" else "▶",
+                                        color = Color.Black,
+                                        fontSize = 27.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                PlayerButton("▶▶", ::nextTrack)
+
+                                TextButton(
+                                    onClick = { repeatOne = !repeatOne }
+                                ) {
+                                    Text(
+                                        if (repeatOne) "1" else "↻",
+                                        color = if (repeatOne) Amber else Muted,
+                                        fontSize = 22.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.weight(1f))
+
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        track?.let {
+                                            favorites = if (it.id in favorites) {
+                                                favorites - it.id
+                                            } else {
+                                                favorites + it.id
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        if (
+                                            track != null &&
+                                            track.id in favorites
+                                        ) {
+                                            "♥  FAVORITO"
+                                        } else {
+                                            "♡  ADICIONAR AOS FAVORITOS"
+                                        },
+                                        color = if (
+                                            track != null &&
+                                            track.id in favorites
+                                        ) Amber else Muted,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+// Barra de Seleção de Plataformas
+@Composable
+fun StreamingHubHeader(
+    selectedSource: AudioSource,
+    onSourceSelected: (AudioSource) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(AudioSource.values()) { source ->
+            FilterChip(
+                selected = (source == selectedSource),
+                onClick = { onSourceSelected(source) },
+                label = { 
+                    Text(
+                        source.displayName,
+                        fontSize = 11.sp,
+                        fontWeight = if (source == selectedSource) FontWeight.Bold else FontWeight.Normal
+                    ) 
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Amber,
+                    selectedLabelColor = Color.Black,
+                    containerColor = Panel,
+                    labelColor = Color.White
+                )
+            )
+        }
+    }
+}
+
+// Ecrã Apple Music
+@Composable
+fun AppleMusicScreen() {
+    var isLoaded by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Panel)
+    ) {
+        AndroidView(
+            factory = { context ->
+                WebView(context).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            isLoaded = true
+                        }
+                    }
+                    loadUrl("https://music.apple.com")
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        if (!isLoaded) {
+            CircularProgressIndicator(
+                color = Amber,
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
     }
 }
