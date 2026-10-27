@@ -87,6 +87,8 @@ fun PlayerScreen() {
     
     val accentColor = Color(0xFFFF9800)
     var favoriteTrackIds = remember { mutableStateOf(setOf<Long>()) }
+    var selectedPreset by remember { mutableIntStateOf(0) }
+    val presets = listOf("Flat", "Bass Boost", "Clarity", "Hi-Res Audio", "Vocal")
 
     val mediaPlayer = remember { MediaPlayer() }
     var equalizer by remember { mutableStateOf<Equalizer?>(null) }
@@ -216,8 +218,14 @@ fun PlayerScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextButton(onClick = { currentScreen = "favorites" }) {
-                            Text(text = "FAV", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { currentScreen = "equalizer" }, contentPadding = PaddingValues(4.dp)) {
+                                Text(text = "EQ", color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            TextButton(onClick = { currentScreen = "favorites" }, contentPadding = PaddingValues(4.dp)) {
+                                Text(text = "FAV", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                            }
                         }
                         Text(text = "G I V A R O", color = Color.LightGray, fontSize = 13.sp, fontWeight = FontWeight.Light, letterSpacing = 8.sp)
                         IconButton(onClick = { currentScreen = "playlist" }) {
@@ -283,7 +291,23 @@ fun PlayerScreen() {
                             Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 11.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = "VOL", color = Color.DarkGray, fontSize = 9.sp, letterSpacing = 2.sp)
+                            Slider(
+                                value = volume,
+                                onValueChange = { volume = it; mediaPlayer.setVolume(volume, volume) },
+                                modifier = Modifier.fillMaxWidth(0.92f),
+                                colors = SliderDefaults.colors(thumbColor = accentColor.copy(alpha = 0.7f), activeTrackColor = accentColor.copy(alpha = 0.5f), inactiveTrackColor = Color(0xFF141414))
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -326,6 +350,30 @@ fun PlayerScreen() {
                             IconButton(onClick = { isShuffleOn = !isShuffleOn }, modifier = Modifier.size(36.dp)) {
                                 Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
+                        }
+                    }
+                }
+            }
+            "equalizer" -> {
+                Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "AUDIO EQUALIZER", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+                        IconButton(onClick = { currentScreen = "player" }) { Text(text = "✕", color = accentColor, fontSize = 20.sp) }
+                    }
+
+                    presets.forEachIndexed { index, name ->
+                        val isSelected = index == selectedPreset
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clip(RoundedCornerShape(10.dp)).background(if (isSelected) Color(0xFF151515) else Color(0xFF070707)).clickable { selectedPreset = index }.padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = name, color = if (isSelected) accentColor else Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            if (isSelected) { Text(text = "●", color = accentColor, fontSize = 12.sp) }
                         }
                     }
                 }
