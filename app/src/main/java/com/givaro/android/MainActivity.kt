@@ -150,6 +150,7 @@ private fun GivaroScreen(
     var screen by remember { mutableStateOf("player") }
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
     var loadKey by remember { mutableIntStateOf(0) }
+    var isFavorite by remember { mutableStateOf(false) }
 
     val track = tracks.getOrNull(selected)
 
@@ -438,12 +439,8 @@ private fun GivaroScreen(
                 )
             }
 
-            IconButton(onClick = { screen = "menu" }) {
-                Icon(
-                    androidx.compose.material.icons.Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    tint = White
-                )
+            TextButton(onClick = { screen = "menu" }) {
+                Text("☰", color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -585,67 +582,43 @@ private fun GivaroScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { shuffle = !shuffle }) {
-                        Icon(
-                            androidx.compose.material.icons.Icons.Default.Shuffle,
-                            contentDescription = "Aleatório",
-                            tint = if (shuffle) Amber else Muted
-                        )
+                    TextButton(onClick = { shuffle = !shuffle }) {
+                        Text("⤮", color = if (shuffle) Amber else Muted, fontSize = 22.sp)
                     }
 
-                    IconButton(
-                        onClick = { previous() },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            androidx.compose.material.icons.Icons.Default.SkipPrevious,
-                            contentDescription = "Anterior",
-                            tint = White,
-                            modifier = Modifier.size(32.dp)
-                        )
+                    TextButton(onClick = { previous() }) {
+                        Text("◀◀", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    IconButton(
-                        onClick = {
-                            if (tracks.isEmpty()) {
-                                if (hasPermission()) refreshTracks()
-                                else requestPermission()
-                            } else {
-                                playing = !playing
-                            }
-                        },
+                    Box(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
                             .background(Amber)
+                            .clickable {
+                                if (tracks.isEmpty()) {
+                                    if (hasPermission()) refreshTracks()
+                                    else requestPermission()
+                                } else {
+                                    playing = !playing
+                                }
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            if (playing) androidx.compose.material.icons.Icons.Default.Pause
-                            else androidx.compose.material.icons.Icons.Default.PlayArrow,
-                            contentDescription = if (playing) "Pausar" else "Reproduzir",
-                            tint = Black,
-                            modifier = Modifier.size(40.dp)
+                        Text(
+                            if (playing) "⏸" else "▶",
+                            color = Black,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
-                    IconButton(
-                        onClick = { next() },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            androidx.compose.material.icons.Icons.Default.SkipNext,
-                            contentDescription = "Próxima",
-                            tint = White,
-                            modifier = Modifier.size(32.dp)
-                        )
+                    TextButton(onClick = { next() }) {
+                        Text("▶▶", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    IconButton(onClick = { repeat = !repeat }) {
-                        Icon(
-                            androidx.compose.material.icons.Icons.Default.Repeat,
-                            contentDescription = "Repetir",
-                            tint = if (repeat) Amber else Muted
-                        )
+                    TextButton(onClick = { repeat = !repeat }) {
+                        Text(if (repeat) "↻" else "🔁", color = if (repeat) Amber else Muted, fontSize = 20.sp)
                     }
                 }
 
@@ -663,12 +636,13 @@ private fun GivaroScreen(
                             .height(30.dp)
                     )
 
-                    Icon(
-                        androidx.compose.material.icons.Icons.Default.FavoriteBorder,
-                        contentDescription = "Favoritos",
-                        tint = Amber,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    TextButton(onClick = { isFavorite = !isFavorite }) {
+                        Text(
+                            if (isFavorite) "♥" else "♡",
+                            color = Amber,
+                            fontSize = 20.sp
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -692,12 +666,8 @@ private fun GivaroScreen(
             // BIBLIOTECA
             "library" -> Column(Modifier.fillMaxSize()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { screen = "player" }) {
-                        Icon(
-                            androidx.compose.material.icons.Icons.Default.ArrowBack,
-                            contentDescription = "Voltar",
-                            tint = Amber
-                        )
+                    TextButton(onClick = { screen = "player" }) {
+                        Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Text(
@@ -762,12 +732,7 @@ private fun GivaroScreen(
                                     .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    androidx.compose.material.icons.Icons.Default.MusicNote,
-                                    contentDescription = null,
-                                    tint = Amber,
-                                    modifier = Modifier.size(30.dp)
-                                )
+                                Text("♫", color = Amber, fontSize = 20.sp)
 
                                 Spacer(Modifier.width(10.dp))
 
@@ -803,12 +768,8 @@ private fun GivaroScreen(
             // EQUALIZADOR
             "equalizer" -> Column(Modifier.fillMaxSize()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { screen = "player" }) {
-                        Icon(
-                            androidx.compose.material.icons.Icons.Default.ArrowBack,
-                            contentDescription = "Voltar",
-                            tint = Amber
-                        )
+                    TextButton(onClick = { screen = "player" }) {
+                        Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Text(
@@ -850,12 +811,8 @@ private fun GivaroScreen(
             // MENU
             "menu" -> Column(Modifier.fillMaxSize()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { screen = "player" }) {
-                        Icon(
-                            androidx.compose.material.icons.Icons.Default.ArrowBack,
-                            contentDescription = "Voltar",
-                            tint = Amber
-                        )
+                    TextButton(onClick = { screen = "player" }) {
+                        Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Text(
@@ -922,12 +879,8 @@ fun StreamingWebViewScreen(url: String, onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    androidx.compose.material.icons.Icons.Default.ArrowBack,
-                    contentDescription = "Voltar",
-                    tint = Amber
-                )
+            TextButton(onClick = onBack) {
+                Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             }
             Text(
                 "HUB DE STREAMING",
