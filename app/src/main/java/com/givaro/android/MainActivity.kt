@@ -2,11 +2,15 @@ package com.givaro.android
 
 import android.Manifest
 import android.content.ContentUris
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
@@ -133,7 +137,7 @@ fun GivaroApp() {
         "Vocal"
     )
 
-    // Leitura das músicas locais com correção do campo ARTIST
+    // Leitura das músicas locais com filtro seguro para ignorar áudios do WhatsApp e notas de voz
     val tracks = remember(permissionGranted) {
         val result = mutableListOf<Track>()
 
@@ -367,6 +371,7 @@ fun GivaroApp() {
 
             Spacer(Modifier.height(10.dp))
 
+            // Cabeçalho de Seleção de Fontes
             StreamingHubHeader(
                 selectedSource = selectedSource,
                 onSourceSelected = { selectedSource = it }
@@ -374,6 +379,7 @@ fun GivaroApp() {
 
             Spacer(Modifier.height(14.dp))
 
+            // Conteúdo dinâmico de acordo com a fonte escolhida
             when (selectedSource) {
                 AudioSource.LOCAL -> {
                     when (screen) {
@@ -871,38 +877,114 @@ fun StreamingHubHeader(
     }
 }
 
-// Ecrã Web Genérico para os Serviços de Streaming
+// Ecrã Web com Tratamento de Erro, Fallback Externo e Proporção Otimizada
 @Composable
 fun StreamingWebViewScreen(url: String) {
-    var isLoaded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var isLoaded by remember(url) { mutableStateOf(false) }
+    var hasError by remember(url) { mutableStateOf(false) }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(16.dp))
             .background(Panel)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AndroidView(
-            factory = { context ->
-                WebView(context).apply {
+            factory = { ctx ->
+                WebView(ctx).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
+                    settings.loadsImagesAutomatically = true
+                    settings.javaScriptCanOpenWindowsAutomatically = false
+
                     webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
+                        override fun onPageStarted(
+                            view: WebView?,
+                            url: String?,
+                            favicon: android.graphics.Bitmap?
+                        ) {
+                            isLoaded = false
+                            hasError = false
+                        }
+
+                        override fun onPageFinished(
+                            view: WebView?,
+                            url: String?
+                        ) {
                             isLoaded = true
                         }
+
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: WebResourceError?
+                        ) {
+                            if (request?.isForMainFrame == true) {
+                                hasError = true
+                                isLoaded = true
+                            }
+                        }
                     }
+
                     loadUrl(url)
                 }
             },
-            modifier = Modifier.fillMaxSize()
+            update = { webView ->
+                if (webView.tag != url) {
+                    webView.tag = url
+                    webView.loadUrl(url)
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
         )
 
-        if (!isLoaded) {
-            CircularProgressIndicator(
-                color = Amber,
-                modifier = Modifier.align(Alignment.Center)
+        if (!isLoaded && !hasError) {
+            Spacer(Modifier.height(8.dp))
+            CircularProgressIndicator(color = Amber)
+        }
+
+        if (hasError) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Não foi possível carregar esta página.",
+                color = Color.White
             )
+
+            Spacer(Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse(url)
+                    )
+                    context.startActivity(intent)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Amber
+                )
+            ) {
+                Text("Abrir no navegador", color = Color.Black)
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        TextButton(
+            onClick = {
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse(url)
+                )
+                context.startActivity(intent)
+            }
+        ) {
+            Text("ABRIR SERVIÇO EXTERNAMENTE", color = Amber, fontSize = 11.sp, letterSpacing = 1.sp)
         }
     }
 }
