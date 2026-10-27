@@ -32,7 +32,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -852,9 +851,9 @@ private fun GivaroScreen(
                 }
             }
 
-            // STREAMING WEBVIEWS INTEGRADOS COM BORDAS FUNDIDAS (FADE / SHADOW)
+            // STREAMING WEBVIEWS INTEGRADOS (Sem bordas, ocupação total a 100%)
             else -> {
-                val currentService = services.find { it.screenKey == screen }
+                val currentService = services.find { service -> service.screenKey == screen }
                 if (currentService != null) {
                     StreamingWebViewScreen(
                         serviceName = currentService.name,
@@ -874,25 +873,15 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .shadow(16.dp, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(Panel, Black, Black)
-                )
-            ),
+            .background(Black),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Barra topo integrada com efeito de sombra e transição suave
+        // Barra topo minimalista integrada sem margens laterais
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Panel, Color(0xFF101115))
-                    )
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .background(Panel)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
@@ -910,25 +899,12 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
             Spacer(Modifier.width(48.dp))
         }
 
-        // Faixa de desfoque/fusão visual para unir o painel superior ao conteúdo web
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xFF101115), Black)
-                    )
-                )
-        )
-
+        // WebView a ocupar 100% do espaço sem molduras ou arredondamentos forçados
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .background(Black)
-                .padding(horizontal = 4.dp)
-                .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
         ) {
             AndroidView(
                 factory = { ctx ->
@@ -944,7 +920,7 @@ fun StreamingWebViewScreen(serviceName: String, url: String, onBack: () -> Unit)
                             cacheMode = WebSettings.LOAD_DEFAULT
                             mediaPlaybackRequiresUserGesture = false
                             
-                            // User-Agent estrito para forçar a versão mobile real de telemóvel
+                            // User-Agent limpo para telemóvel para garantir o layout correto em todos
                             userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
                         }
 
