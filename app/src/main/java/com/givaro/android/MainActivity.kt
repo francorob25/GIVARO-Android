@@ -26,7 +26,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -75,8 +74,8 @@ data class Track(
 fun GivaroApp() {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("player") } // player, equalizer, playlist, favorites, settings
-    var isCircularViewMode by remember { mutableStateOf(false) } // Alterna entre Capa Quadrada e Capa Circular Imersiva
+    var currentScreen by remember { mutableStateOf("player") }
+    var isCircularViewMode by remember { mutableStateOf(false) }
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0.7f) }
     var isShuffleOn by remember { mutableStateOf(false) }
@@ -85,7 +84,6 @@ fun GivaroApp() {
     val accentColor = Color(0xFFFF9800)
     var favoriteTrackIds by remember { mutableStateOf(setOf<Long>()) }
 
-    // State do Equalizador (Níveis das 10 bandas interativas de 0f a 1f)
     var selectedPreset by remember { mutableIntStateOf(0) }
     val presets = listOf("Flat", "Bass Boost", "Clarity", "Hi-Res", "Vocal")
     val bandLevels = remember { mutableStateListOf(0.5f, 0.6f, 0.45f, 0.7f, 0.5f, 0.65f, 0.8f, 0.55f, 0.6f, 0.75f) }
@@ -93,11 +91,7 @@ fun GivaroApp() {
     var bassBoostEnabled by remember { mutableStateOf(true) }
     var virtualizerEnabled by remember { mutableStateOf(false) }
     var volumeEqEnabled by remember { mutableStateOf(false) }
-
-    // Playlist Navigation State
     var playlistCategory by remember { mutableStateOf("Todas") }
-
-    // Settings State
     var darkTheme by remember { mutableStateOf(true) }
 
     val mediaPlayer = remember { MediaPlayer() }
@@ -219,54 +213,64 @@ fun GivaroApp() {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF030303))) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF000000))) {
         Column(modifier = Modifier.fillMaxSize()) {
             
-            // CONTEÚDO PRINCIPAL (Troca consoante a tela)
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when (currentScreen) {
                     "player" -> {
                         Column(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 6.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Top Bar Estilo Walkman
+                            // Top Bar Rigorosamente idêntica ao Conceito (EQ, FAV, GIVARO, Definições)
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    TextButton(onClick = { currentScreen = "equalizer" }, contentPadding = PaddingValues(2.dp)) {
-                                        Text(text = "EQ", color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    TextButton(onClick = { currentScreen = "favorites" }, contentPadding = PaddingValues(2.dp)) {
-                                        Text(text = "FAV", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                                    }
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                    Text(
+                                        text = "EQ",
+                                        color = accentColor,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp,
+                                        modifier = Modifier.clickable { currentScreen = "equalizer" }
+                                    )
+                                    Text(
+                                        text = "FAV",
+                                        color = Color.Gray,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp,
+                                        modifier = Modifier.clickable { currentScreen = "favorites" }
+                                    )
                                 }
                                 Text(
                                     text = "G I V A R O",
                                     color = Color.LightGray,
-                                    fontSize = 12.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.Light,
-                                    letterSpacing = 6.sp,
-                                    modifier = Modifier.clickable { isCircularViewMode = !isCircularViewMode } // Clica para alternar o modo visual
+                                    letterSpacing = 5.sp,
+                                    modifier = Modifier.clickable { isCircularViewMode = !isCircularViewMode }
                                 )
-                                IconButton(onClick = { currentScreen = "settings" }, modifier = Modifier.size(36.dp)) {
-                                    Text(text = "⚙", color = Color.Gray, fontSize = 18.sp)
-                                }
+                                Text(
+                                    text = "⚙",
+                                    color = Color.Gray,
+                                    fontSize = 18.sp,
+                                    modifier = Modifier.clickable { currentScreen = "settings" }.padding(2.dp)
+                                )
                             }
 
-                            // MODO DE CAPA (Quadrada vs. Circular Imersiva da 5ª tela)
+                            // Capa Proporcional Exata do Conceito
                             if (isCircularViewMode) {
-                                // MODO CIRCULAR IMERSIVO
                                 Box(
                                     modifier = Modifier
-                                        .size(250.dp)
+                                        .size(270.dp)
                                         .clip(CircleShape)
-                                        .border(2.dp, Brush.radialGradient(listOf(accentColor, Color.Transparent)), CircleShape)
+                                        .border(2.5.dp, Brush.radialGradient(listOf(accentColor, Color.Transparent)), CircleShape)
                                         .background(Color(0xFF0A0A0A)),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -274,36 +278,39 @@ fun GivaroApp() {
                                         Image(bitmap = albumArtBitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                                     } else {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                                            Text(text = "WAV 192 kHz", color = accentColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                            Text(text = "WAV 192 kHz", color = accentColor, fontSize = 10.sp, letterSpacing = 1.sp)
                                             Spacer(modifier = Modifier.height(8.dp))
-                                            Text(text = currentTrack.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                            Text(text = currentTrack.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                                         }
                                     }
                                 }
                             } else {
-                                // MODO QUADRADO CLÁSSICO
                                 Box(
-                                    modifier = Modifier.size(230.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF0A0A0A)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(290.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFF0A0A0A)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (albumArtBitmap != null) {
                                         Image(bitmap = albumArtBitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                                     } else {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                                            Text(text = "WAV 192 kHz / 24 bit", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
-                                            Spacer(modifier = Modifier.height(12.dp))
-                                            Text(text = currentTrack.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                            Text(text = "WAV 192 kHz / 24 bit", color = Color.Gray, fontSize = 10.sp, letterSpacing = 1.sp)
+                                            Spacer(modifier = Modifier.height(14.dp))
+                                            Text(text = currentTrack.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Text(text = currentTrack.artist, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                                            Text(text = currentTrack.artist, color = Color.Gray, fontSize = 13.sp, maxLines = 1)
                                         }
                                     }
                                 }
                             }
 
-                            // Controlos e Metadados
+                            // Bloco Inferior de Metadados e Controlos IDÊNTICO ao Design
                             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -315,9 +322,9 @@ fun GivaroApp() {
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(text = currentTrack.artist, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
                                         }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(text = currentTrack.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(text = currentTrack.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                        Spacer(modifier = Modifier.height(1.dp))
                                         Text(text = "Digital Music Player  •  ${currentIndex + 1}/${playlist.size}", color = Color.DarkGray, fontSize = 10.sp)
                                     }
 
@@ -326,11 +333,11 @@ fun GivaroApp() {
                                         if (isCurrentFavorite) set.remove(currentTrack.id) else set.add(currentTrack.id)
                                         favoriteTrackIds = set
                                     }) {
-                                        Text(text = if (isCurrentFavorite) "♥" else "♡", color = if (isCurrentFavorite) accentColor else Color.DarkGray, fontSize = 22.sp)
+                                        Text(text = if (isCurrentFavorite) "♥" else "♡", color = if (isCurrentFavorite) accentColor else Color.DarkGray, fontSize = 24.sp)
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
 
                                 val totalMs = currentTrack.durationSec * 1000L
                                 val progressFraction = if (totalMs > 0) (currentPositionMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
@@ -343,19 +350,19 @@ fun GivaroApp() {
                                         try { mediaPlayer.seekTo(target.toInt()) } catch (e: Exception) {}
                                     },
                                     colors = SliderDefaults.colors(thumbColor = accentColor, activeTrackColor = accentColor, inactiveTrackColor = Color(0xFF1C1C1C)),
-                                    modifier = Modifier.height(10.dp)
+                                    modifier = Modifier.height(12.dp)
                                 )
 
-                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                     val secs = (currentPositionMs / 1000).toInt()
                                     Text(text = String.format("%02d:%02d", secs / 60, secs % 60), color = Color.Gray, fontSize = 10.sp)
                                     Text(text = currentTrack.durationFormatted, color = Color.Gray, fontSize = 10.sp)
                                 }
 
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
 
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -368,34 +375,35 @@ fun GivaroApp() {
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
 
+                                // Botões de Transporte Circulares Perfeitos Estilo Hardware Walkman
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFF121212)).clickable { repeatMode = (repeatMode + 1) % 3 }, contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFF121212)).clickable { repeatMode = (repeatMode + 1) % 3 }, contentAlignment = Alignment.Center) {
                                         Text(text = if (repeatMode == 2) "1" else "∞", color = if (repeatMode > 0) accentColor else Color.DarkGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     }
-                                    Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF121212)).clickable {
+                                    Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(Color(0xFF121212)).clickable {
                                         currentIndex = if (currentIndex > 0) currentIndex - 1 else playlist.size - 1
                                         currentPositionMs = 0L
                                         isPlaying = true
                                     }, contentAlignment = Alignment.Center) {
                                         Text(text = "◀◀", color = Color.LightGray, fontSize = 12.sp)
                                     }
-                                    Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(27.dp)).background(accentColor).clickable { isPlaying = !isPlaying }, contentAlignment = Alignment.Center) {
-                                        Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                    Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(accentColor).clickable { isPlaying = !isPlaying }, contentAlignment = Alignment.Center) {
+                                        Text(text = if (isPlaying) "❚❚" else "▶", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                     }
-                                    Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF121212)).clickable {
+                                    Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(Color(0xFF121212)).clickable {
                                         currentIndex = if (isShuffleOn) playlist.indices.random() else (currentIndex + 1) % playlist.size
                                         currentPositionMs = 0L
                                         isPlaying = true
                                     }, contentAlignment = Alignment.Center) {
                                         Text(text = "▶▶", color = Color.LightGray, fontSize = 12.sp)
                                     }
-                                    Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFF121212)).clickable { isShuffleOn = !isShuffleOn }, contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(Color(0xFF121212)).clickable { isShuffleOn = !isShuffleOn }, contentAlignment = Alignment.Center) {
                                         Text(text = "⤮", color = if (isShuffleOn) accentColor else Color.DarkGray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
@@ -413,7 +421,6 @@ fun GivaroApp() {
                                 }
                             }
 
-                            // Presets Horizontais
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 presets.forEachIndexed { idx, p ->
                                     Box(
@@ -426,7 +433,6 @@ fun GivaroApp() {
 
                             Spacer(modifier = Modifier.height(20.dp))
 
-                            // Bandas Verticais do Equalizador Interativas
                             Row(modifier = Modifier.fillMaxWidth().height(160.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                                 val freqs = listOf("60", "170", "310", "600", "1K", "3K", "6K", "12K", "14K", "16K")
                                 freqs.forEachIndexed { index, freq ->
@@ -438,7 +444,6 @@ fun GivaroApp() {
                                                 .clip(RoundedCornerShape(6.dp))
                                                 .background(Color(0xFF151515))
                                                 .clickable {
-                                                    // Altera o nível ao clicar na barra
                                                     bandLevels[index] = (bandLevels[index] + 0.25f).let { if (it > 1f) 0.1f else it }
                                                 },
                                             contentAlignment = Alignment.BottomCenter
@@ -453,7 +458,6 @@ fun GivaroApp() {
 
                             Spacer(modifier = Modifier.height(20.dp))
 
-                            // Interruptores de áudio
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF0C0C0C)).padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Text(text = "Reforço de graves", color = Color.White, fontSize = 13.sp)
@@ -482,7 +486,6 @@ fun GivaroApp() {
                                 Text(text = "🔍", fontSize = 16.sp)
                             }
 
-                            // Abas Superiores Exatas
                             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("Todas", "Álbuns", "Artistas", "Pastas").forEach { cat ->
                                     val isSel = cat == playlistCategory
@@ -620,23 +623,23 @@ fun GivaroApp() {
                 }
             }
 
-            // BARRA DE NAVEGAÇÃO INFERIOR FIXA
+            // Barra de Navegação Inferior Fixa Exata
             Row(
-                modifier = Modifier.fillMaxWidth().background(Color(0xFF030303)).padding(vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().background(Color(0xFF030303)).padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { currentScreen = "player" }) {
-                    Text(text = "🎵", color = if (currentScreen == "player") accentColor else Color.Gray, fontSize = 18.sp)
+                    Text(text = "🎵", color = if (currentScreen == "player") accentColor else Color.Gray, fontSize = 20.sp)
                 }
                 IconButton(onClick = { currentScreen = "equalizer" }) {
-                    Text(text = "⏱", color = if (currentScreen == "equalizer") accentColor else Color.Gray, fontSize = 18.sp)
+                    Text(text = "⏱", color = if (currentScreen == "equalizer") accentColor else Color.Gray, fontSize = 20.sp)
                 }
                 IconButton(onClick = { currentScreen = "playlist" }) {
-                    Text(text = "☰", color = if (currentScreen == "playlist") accentColor else Color.Gray, fontSize = 20.sp)
+                    Text(text = "☰", color = if (currentScreen == "playlist") accentColor else Color.Gray, fontSize = 22.sp)
                 }
                 IconButton(onClick = { currentScreen = "favorites" }) {
-                    Text(text = "♥", color = if (currentScreen == "favorites") accentColor else Color.Gray, fontSize = 18.sp)
+                    Text(text = "♥", color = if (currentScreen == "favorites") accentColor else Color.Gray, fontSize = 20.sp)
                 }
             }
         }
