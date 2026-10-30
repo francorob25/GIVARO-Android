@@ -7,6 +7,7 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -94,6 +95,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
 
         window.statusBarColor = android.graphics.Color.rgb(8, 9, 12)
         window.navigationBarColor = android.graphics.Color.rgb(8, 9, 12)
