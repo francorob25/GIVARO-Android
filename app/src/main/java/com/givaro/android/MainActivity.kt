@@ -1,4 +1,3 @@
-
 package com.givaro.android
 
 import android.Manifest
@@ -12,6 +11,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -22,6 +22,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -61,18 +62,14 @@ private data class Track(
     val uri: Uri
 )
 
-private data class Service(
-    val name: String,
-    val url: String,
-    val screenKey: String
-)
+private data class Service(val name: String, val url: String, val screenKey: String)
 
 private val services = listOf(
     Service("Apple Music", "https://music.apple.com", "apple"),
     Service("Spotify", "https://open.spotify.com", "spotify"),
     Service("Deezer", "https://www.deezer.com", "deezer"),
     Service("Amazon Music", "https://music.amazon.com", "amazon"),
-    Service("YouTube Music", "https://music.youtube.com", "ytmusic"),
+    Service("YT Music", "https://music.youtube.com", "ytmusic"),
     Service("YouTube", "https://m.youtube.com", "youtube")
 )
 
@@ -99,6 +96,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
 
         window.statusBarColor = android.graphics.Color.rgb(8, 9, 12)
         window.navigationBarColor = android.graphics.Color.rgb(8, 9, 12)
@@ -141,6 +142,7 @@ private fun GivaroScreen(
     requestPermission: () -> Unit
 ) {
     val context = LocalContext.current
+
     val tracks = remember { mutableStateListOf<Track>() }
 
     var selected by remember { mutableIntStateOf(0) }
@@ -151,33 +153,15 @@ private fun GivaroScreen(
     var position by remember { mutableFloatStateOf(0f) }
     var duration by remember { mutableIntStateOf(0) }
     var screen by remember { mutableStateOf("player") }
+    
+    var selectedServiceKey by remember { mutableStateOf<String?>(null) }
+    val selectedService = services.find { it.screenKey == selectedServiceKey }
+
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
     var loadKey by remember { mutableIntStateOf(0) }
     var isFavorite by remember { mutableStateOf(false) }
-    var isPrepared by remember { mutableStateOf(false) }
 
-    // Serviço escolhido para aparecer dentro do Player principal.
-    var selectedServiceKey by remember { mutableStateOf<String?>(null) }
-    val selectedService = services.find {
-        it.screenKey == selectedServiceKey
-    }
     val track = tracks.getOrNull(selected)
-
-    fun stopLocalPlayback() {
-        playing = false
-        isPrepared = false
-        try {
-            player?.pause()
-            player?.seekTo(0)
-        } catch (_: Exception) {
-        }
-    }
-
-    fun openStreaming(service: Service) {
-        stopLocalPlayback()
-        selectedServiceKey = service.screenKey
-        screen = "player"
-    }
 
     fun refreshTracks() {
         if (!hasPermission()) {
@@ -188,6 +172,7 @@ private fun GivaroScreen(
         tracks.clear()
 
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
@@ -235,7 +220,8 @@ private fun GivaroScreen(
                             artist = cursor.getString(artistCol)
                                 ?.takeIf {
                                     it.isNotBlank() && it != "<unknown>"
-                                } ?: "Artista desconhecido",
+                                }
+                                ?: "Artista desconhecido",
                             duration = cursor.getLong(durationCol),
                             uri = ContentUris.withAppendedId(
                                 collection,
@@ -250,6 +236,7 @@ private fun GivaroScreen(
                 0,
                 (tracks.size - 1).coerceAtLeast(0)
             )
+
             loadKey++
 
             Toast.makeText(
@@ -280,23 +267,13 @@ private fun GivaroScreen(
         if (hasPermission()) refreshTracks()
     }
 
-    // Gerencia o player local sem tentar iniciar antes de estar preparado.
-    LaunchedEffect(selected, loadKey, selectedServiceKey) {
-        isPrepared = false
-
+    LaunchedEffect(selected, loadKey) {
         val current = tracks.getOrNull(selected)
 
-        if (selectedServiceKey != null || current == null) {
+        if (current == null) {
             playing = false
             position = 0f
             duration = 0
-
-            try {
-                player?.release()
-            } catch (_: Exception) {
-            }
-
-            player = null
             return@LaunchedEffect
         }
 
@@ -305,14 +282,14 @@ private fun GivaroScreen(
 
             val mp = MediaPlayer()
             player = mp
+
             mp.setDataSource(context, current.uri)
 
             mp.setOnPreparedListener { ready ->
-                isPrepared = true
                 duration = ready.duration
                 ready.setVolume(volume, volume)
 
-                if (playing && selectedServiceKey == null) {
+                if (playing) {
                     try {
                         ready.start()
                     } catch (_: Exception) {
@@ -327,17 +304,13 @@ private fun GivaroScreen(
                         it.start()
                     } catch (_: Exception) {
                     }
-                } else if (
-                    tracks.isNotEmpty() &&
-                    selectedServiceKey == null
-                ) {
+                } else if (tracks.isNotEmpty()) {
                     selected = if (shuffle && tracks.size > 1) {
-                        tracks.indices
-                            .filter { index -> index != selected }
-                            .random()
+                        tracks.indices.filter { it != selected }.random()
                     } else {
                         (selected + 1) % tracks.size
                     }
+
                     playing = true
                 }
             }
@@ -346,6 +319,7 @@ private fun GivaroScreen(
 
         } catch (_: Exception) {
             playing = false
+
             Toast.makeText(
                 context,
                 "Não foi possível reproduzir esta música.",
@@ -354,27 +328,23 @@ private fun GivaroScreen(
         }
     }
 
-    LaunchedEffect(playing, isPrepared, selectedServiceKey) {
-        val mp = player
-
-        if (
-            selectedServiceKey != null ||
-            !isPrepared ||
-            mp == null
-        ) return@LaunchedEffect
-
+    LaunchedEffect(playing) {
         try {
-            if (playing && !mp.isPlaying) {
-                mp.start()
-            } else if (!playing && mp.isPlaying) {
-                mp.pause()
+            val mp = player
+
+            if (mp != null) {
+                if (playing && !mp.isPlaying) {
+                    mp.start()
+                } else if (!playing && mp.isPlaying) {
+                    mp.pause()
+                }
             }
         } catch (_: Exception) {
         }
     }
 
-    LaunchedEffect(playing, selected, selectedServiceKey) {
-        while (playing && selectedServiceKey == null) {
+    LaunchedEffect(playing, selected) {
+        while (playing) {
             try {
                 player?.let {
                     if (it.isPlaying) {
@@ -384,6 +354,7 @@ private fun GivaroScreen(
                 }
             } catch (_: Exception) {
             }
+
             delay(400)
         }
     }
@@ -402,21 +373,16 @@ private fun GivaroScreen(
         }
 
         selected = if (shuffle && tracks.size > 1) {
-            tracks.indices
-                .filter { index -> index != selected }
-                .random()
+            tracks.indices.filter { it != selected }.random()
         } else {
             (selected + 1) % tracks.size
         }
 
-        selectedServiceKey = null
         playing = true
     }
 
     fun previous() {
         if (tracks.isEmpty()) return
-
-        selectedServiceKey = null
 
         try {
             if ((player?.currentPosition ?: 0) > 3000) {
@@ -426,12 +392,14 @@ private fun GivaroScreen(
                 selected =
                     if (selected > 0) selected - 1
                     else tracks.lastIndex
+
                 playing = true
             }
         } catch (_: Exception) {
             selected =
                 if (selected > 0) selected - 1
                 else tracks.lastIndex
+
             playing = true
         }
     }
@@ -441,126 +409,136 @@ private fun GivaroScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF20170D), Black, Black)
+                    listOf(
+                        Color(0xFF20170D),
+                        Black,
+                        Black
+                    )
                 )
             )
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // Cabeçalho permanente.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = { screen = "equalizer" }) {
-                Text(
-                    "EQ",
-                    color = Amber,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+
+        // Modo Immersive Theater: Oculta o cabeçalho principal quando um serviço web está ativo
+        if (selectedService == null && screen == "player") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = { screen = "equalizer" }) {
+                    Text("EQ", color = Amber, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "GIVARO",
+                        color = White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 3.sp
+                    )
+
+                    Text(
+                        "IMMERSIVE HUB",
+                        color = Amber,
+                        fontSize = 9.sp,
+                        letterSpacing = 2.sp
+                    )
+                }
+
+                TextButton(onClick = { screen = "menu" }) {
+                    Text("☰", color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "GIVARO",
-                    color = White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 3.sp
-                )
-                Text(
-                    "AUDIO HUB",
-                    color = Amber,
-                    fontSize = 9.sp,
-                    letterSpacing = 2.sp
-                )
-            }
-
-            TextButton(onClick = { screen = "menu" }) {
-                Text(
-                    "☰",
-                    color = White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Spacer(Modifier.height(8.dp))
         }
-
-        Spacer(Modifier.height(8.dp))
 
         when (screen) {
             "player" -> {
-                if (selectedService != null) {
-                    // O streaming ocupa a área principal do Player.
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(onClick = {
-                                selectedServiceKey = null
-                                screen = "player"
-                            }) {
-                                Text(
-                                    "‹ Player local",
-                                    color = Amber,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            Spacer(Modifier.weight(1f))
-
-                            Text(
-                                selectedService.name.uppercase(),
-                                color = White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp
-                            )
-                        }
-
-                        StreamingWebViewScreen(
-                            serviceName = selectedService.name,
-                            url = selectedService.url,
-                            modifier = Modifier.weight(1f),
-                            onBack = {
-                                selectedServiceKey = null
-                                screen = "player"
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Carrossel visível apenas se não estiver em modo teatro imersivo absoluto
+                    if (selectedService == null) {
+                        StreamingCarousel(
+                            selectedServiceKey = selectedServiceKey,
+                            onSelect = { service ->
+                                selectedServiceKey = service.screenKey
                             }
                         )
+                        Spacer(Modifier.height(10.dp))
                     }
-                } else {
-                    // Player local.
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(bottom = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(Modifier.height(4.dp))
 
-                        BoxWithConstraints(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
+                    if (selectedService != null) {
+                        // Modo Immersive Theater Ativo para o serviço Web
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Black)
                         ) {
-                            val artSize = minOf(
-                                maxWidth * 0.68f,
-                                260.dp
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Panel)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        selectedServiceKey = null
+                                    }
+                                ) {
+                                    Text(
+                                        "‹ Sair do Modo Imersivo",
+                                        color = Amber,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+
+                                Spacer(Modifier.weight(1f))
+
+                                Text(
+                                    selectedService.name.uppercase(),
+                                    color = White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp
+                                )
+
+                                Spacer(Modifier.weight(1f))
+                                Spacer(Modifier.width(60.dp)) // Espaço para equilibrar o título
+                            }
+
+                            StreamingWebViewScreen(
+                                serviceName = selectedService.name,
+                                url = selectedService.url,
+                                modifier = Modifier.weight(1f),
+                                onBack = {
+                                    selectedServiceKey = null
+                                }
                             )
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                                .padding(bottom = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Spacer(Modifier.height(2.dp))
 
                             Box(
                                 modifier = Modifier
-                                    .size(artSize)
+                                    .fillMaxWidth(0.68f)
+                                    .aspectRatio(1f)
                                     .clip(RoundedCornerShape(24.dp))
                                     .background(
                                         Brush.linearGradient(
@@ -573,16 +551,16 @@ private fun GivaroScreen(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
                                         "EQ",
                                         color = Amber,
                                         fontSize = 40.sp,
                                         fontWeight = FontWeight.Bold
                                     )
+
                                     Spacer(Modifier.height(6.dp))
+
                                     Text(
                                         "GIVARO",
                                         color = White,
@@ -590,6 +568,7 @@ private fun GivaroScreen(
                                         fontWeight = FontWeight.Black,
                                         letterSpacing = 4.sp
                                     )
+
                                     Text(
                                         "LOCAL AUDIO",
                                         color = Amber,
@@ -598,230 +577,176 @@ private fun GivaroScreen(
                                     )
                                 }
                             }
-                        }
 
-                        Spacer(Modifier.height(16.dp))
+                            Spacer(Modifier.height(12.dp))
 
-                        Text(
-                            track?.title ?: "Nenhuma música selecionada",
-                            color = White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Spacer(Modifier.height(2.dp))
-
-                        Text(
-                            track?.artist ?: "Escolha uma música da biblioteca",
-                            color = Muted,
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        Spacer(Modifier.height(10.dp))
-
-                        Column(Modifier.fillMaxWidth()) {
-                            Slider(
-                                value = if (duration > 0) {
-                                    position.coerceIn(0f, duration.toFloat())
-                                } else 0f,
-                                onValueChange = { position = it },
-                                onValueChangeFinished = {
-                                    try {
-                                        player?.seekTo(position.toInt())
-                                    } catch (_: Exception) {
-                                    }
-                                },
-                                valueRange = 0f..duration.coerceAtLeast(1).toFloat(),
-                                enabled = track != null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(26.dp)
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    timeText(position.toLong()),
-                                    color = Muted,
-                                    fontSize = 10.sp
-                                )
-                                Text(
-                                    timeText(duration.toLong()),
-                                    color = Muted,
-                                    fontSize = 10.sp
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(6.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(onClick = { shuffle = !shuffle }) {
-                                Text(
-                                    "⤮",
-                                    color = if (shuffle) Amber else Muted,
-                                    fontSize = 22.sp
-                                )
-                            }
-
-                            TextButton(onClick = { previous() }) {
-                                Text(
-                                    "◀◀",
+                                    track?.title ?: "Nenhuma música selecionada",
                                     color = White,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Spacer(Modifier.height(2.dp))
+
+                                Text(
+                                    track?.artist ?: "Escolha uma música da biblioteca",
+                                    color = Muted,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
 
-                            Box(
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(CircleShape)
-                                    .background(Amber)
-                                    .clickable {
-                                        if (tracks.isEmpty()) {
-                                            if (hasPermission()) refreshTracks()
-                                            else requestPermission()
-                                        } else {
-                                            playing = !playing
+                            Spacer(Modifier.height(8.dp))
+
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Slider(
+                                    value = if (duration > 0) {
+                                        position.coerceIn(0f, duration.toFloat())
+                                    } else {
+                                        0f
+                                    },
+                                    onValueChange = { position = it },
+                                    onValueChangeFinished = {
+                                        try {
+                                            player?.seekTo(position.toInt())
+                                        } catch (_: Exception) {
                                         }
                                     },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    if (playing) "⏸" else "▶",
-                                    color = Black,
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold
+                                    valueRange = 0f..duration.coerceAtLeast(1).toFloat(),
+                                    enabled = track != null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(26.dp)
                                 )
-                            }
 
-                            TextButton(onClick = { next() }) {
-                                Text(
-                                    "▶▶",
-                                    color = White,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        timeText(position.toLong()),
+                                        color = Muted,
+                                        fontSize = 10.sp
+                                    )
 
-                            TextButton(onClick = { repeat = !repeat }) {
-                                Text(
-                                    if (repeat) "↻" else "🔁",
-                                    color = if (repeat) Amber else Muted,
-                                    fontSize = 20.sp
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("VOL.", color = Muted, fontSize = 10.sp)
-
-                            Slider(
-                                value = volume,
-                                onValueChange = { volume = it },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(28.dp)
-                                    .padding(horizontal = 8.dp)
-                            )
-
-                            TextButton(onClick = {
-                                isFavorite = !isFavorite
-                            }) {
-                                Text(
-                                    if (isFavorite) "♥" else "♡",
-                                    color = Amber,
-                                    fontSize = 20.sp
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(6.dp))
-
-                        Button(
-                            onClick = { screen = "library" },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Panel,
-                                contentColor = Amber
-                            )
-                        ) {
-                            Text(
-                                if (tracks.isEmpty()) "CARREGAR MINHAS MÚSICAS"
-                                else "ABRIR BIBLIOTECA",
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(Modifier.height(12.dp))
-
-                        Text(
-                            "OUVIR POR STREAMING",
-                            color = Amber,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp
-                        )
-
-                        Spacer(Modifier.height(4.dp))
-
-                        // Atalhos rápidos para os seis serviços.
-                        services.chunked(3).forEach { rowServices ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                rowServices.forEach { service ->
-                                    OutlinedButton(
-                                        onClick = { openStreaming(service) },
-                                        modifier = Modifier.weight(1f),
-                                        contentPadding = PaddingValues(
-                                            horizontal = 4.dp,
-                                            vertical = 8.dp
-                                        ),
-                                        shape = RoundedCornerShape(10.dp)
-                                    ) {
-                                        Text(
-                                            service.name,
-                                            fontSize = 10.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
+                                    Text(
+                                        timeText(duration.toLong()),
+                                        color = Muted,
+                                        fontSize = 10.sp
+                                    )
                                 }
                             }
-                            Spacer(Modifier.height(4.dp))
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(onClick = { shuffle = !shuffle }) {
+                                    Text("⤮", color = if (shuffle) Amber else Muted, fontSize = 22.sp)
+                                }
+
+                                TextButton(onClick = { previous() }) {
+                                    Text("◀◀", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape)
+                                        .background(Amber)
+                                        .clickable {
+                                            if (tracks.isEmpty()) {
+                                                if (hasPermission()) refreshTracks()
+                                                else requestPermission()
+                                            } else {
+                                                playing = !playing
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        if (playing) "⏸" else "▶",
+                                        color = Black,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                TextButton(onClick = { next() }) {
+                                    Text("▶▶", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                TextButton(onClick = { repeat = !repeat }) {
+                                    Text(if (repeat) "↻" else "🔁", color = if (repeat) Amber else Muted, fontSize = 20.sp)
+                                }
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("VOL.", color = Muted, fontSize = 10.sp)
+
+                                Slider(
+                                    value = volume,
+                                    onValueChange = { volume = it },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(28.dp)
+                                        .padding(horizontal = 8.dp)
+                                )
+
+                                TextButton(onClick = { isFavorite = !isFavorite }) {
+                                    Text(
+                                        if (isFavorite) "♥" else "♡",
+                                        color = Amber,
+                                        fontSize = 20.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Button(
+                                onClick = { screen = "library" },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Panel,
+                                    contentColor = Amber
+                                )
+                            ) {
+                                Text(
+                                    if (tracks.isEmpty()) "CARREGAR MINHAS MÚSICAS"
+                                    else "ABRIR BIBLIOTECA",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
             }
 
+            // BIBLIOTECA
             "library" -> Column(Modifier.fillMaxSize()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { screen = "player" }) {
-                        Text(
-                            "‹",
-                            color = Amber,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Text(
@@ -832,7 +757,12 @@ private fun GivaroScreen(
                     )
 
                     Spacer(Modifier.weight(1f))
-                    Text("${tracks.size} faixas", color = Muted, fontSize = 11.sp)
+
+                    Text(
+                        "${tracks.size} faixas",
+                        color = Muted,
+                        fontSize = 11.sp
+                    )
                 }
 
                 Button(
@@ -867,13 +797,13 @@ private fun GivaroScreen(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(
-                                        if (
-                                            index == selected &&
-                                            selectedServiceKey == null
-                                        ) Color(0xFF302314) else Panel
+                                        if (index == selected) {
+                                            Color(0xFF302314)
+                                        } else {
+                                            Panel
+                                        }
                                     )
                                     .clickable {
-                                        selectedServiceKey = null
                                         selected = index
                                         playing = true
                                         screen = "player"
@@ -882,6 +812,7 @@ private fun GivaroScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text("♫", color = Amber, fontSize = 20.sp)
+
                                 Spacer(Modifier.width(10.dp))
 
                                 Column(Modifier.weight(1f)) {
@@ -892,6 +823,7 @@ private fun GivaroScreen(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
+
                                     Text(
                                         item.artist,
                                         color = Muted,
@@ -912,16 +844,13 @@ private fun GivaroScreen(
                 }
             }
 
+            // EQUALIZADOR
             "equalizer" -> Column(Modifier.fillMaxSize()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { screen = "player" }) {
-                        Text(
-                            "‹",
-                            color = Amber,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     }
+
                     Text(
                         "EQUALIZADOR",
                         color = White,
@@ -958,6 +887,7 @@ private fun GivaroScreen(
                 )
             }
 
+            // MENU
             "menu" -> Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -967,13 +897,9 @@ private fun GivaroScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { screen = "player" }) {
-                        Text(
-                            "‹",
-                            color = Amber,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("‹", color = Amber, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                     }
+
                     Text(
                         "MENU DE NAVEGAÇÃO",
                         color = White,
@@ -985,7 +911,6 @@ private fun GivaroScreen(
                 Spacer(Modifier.height(4.dp))
 
                 MenuRow("Reprodutor Local", "Ouvir músicas do telemóvel") {
-                    selectedServiceKey = null
                     screen = "player"
                 }
 
@@ -1009,14 +934,12 @@ private fun GivaroScreen(
                 )
 
                 services.forEach { service ->
-                    MenuRow(
-                        service.name,
-                        "Abrir dentro da aba Player"
-                    ) {
-                        openStreaming(service)
+                    MenuRow(service.name, "Abrir player integrado") {
+                        selectedServiceKey = service.screenKey
+                        screen = "player"
                     }
                 }
-
+                
                 Spacer(Modifier.height(20.dp))
             }
         }
@@ -1024,183 +947,114 @@ private fun GivaroScreen(
 }
 
 @Composable
-private fun StreamingWebViewScreen(
-    serviceName: String,
-    url: String,
-    modifier: Modifier = Modifier,
-    onBack: () -> Unit
-) {
-    var isLoaded by remember(url) { mutableStateOf(false) }
-    var loadFailed by remember(url) { mutableStateOf(false) }
-    val context = LocalContext.current
-
-    Box(
-        modifier = modifier
+fun StreamingCarousel(selectedServiceKey: String?, onSelect: (Service) -> Unit) {
+    Row(
+        modifier = Modifier
             .fillMaxWidth()
-            .background(Black)
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        databaseEnabled = true
-                        loadsImagesAutomatically = true
-                        javaScriptCanOpenWindowsAutomatically = true
-                        setSupportMultipleWindows(false)
-                        mixedContentMode =
-                            WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        cacheMode = WebSettings.LOAD_DEFAULT
-                        mediaPlaybackRequiresUserGesture = false
-                        useWideViewPort = true
-                        loadWithOverviewMode = true
-                        setSupportZoom(false)
-                        builtInZoomControls = false
-                        displayZoomControls = false
-                    }
-
-                    CookieManager.getInstance().setAcceptCookie(true)
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        CookieManager.getInstance()
-                            .setAcceptThirdPartyCookies(this, true)
-                    }
-
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageStarted(
-                            view: WebView?,
-                            pageUrl: String?,
-                            favicon: android.graphics.Bitmap?
-                        ) {
-                            isLoaded = false
-                            loadFailed = false
-                        }
-
-                        override fun onPageFinished(
-                            view: WebView?,
-                            pageUrl: String?
-                        ) {
-                            isLoaded = true
-                        }
-
-                        override fun onReceivedError(
-                            view: WebView?,
-                            request: WebResourceRequest?,
-                            error: android.webkit.WebResourceError?
-                        ) {
-                            if (request?.isForMainFrame == true) {
-                                isLoaded = true
-                                loadFailed = true
-                            }
-                        }
-
-                        override fun onReceivedSslError(
-                            view: WebView?,
-                            handler: SslErrorHandler?,
-                            error: android.net.http.SslError?
-                        ) {
-                            // Nunca ignorar erros de certificado.
-                            handler?.cancel()
-                            isLoaded = true
-                            loadFailed = true
-                        }
-                    }
-
-                    // Carrega a URL uma única vez.
-                    tag = url
-                    loadUrl(url)
-                }
-            },
-            update = { webView ->
-                if (webView.tag != url) {
-                    webView.tag = url
-                    isLoaded = false
-                    loadFailed = false
-                    webView.loadUrl(url)
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        if (!isLoaded) {
+        services.forEach { service ->
+            val isSelected = service.screenKey == selectedServiceKey
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Black.copy(alpha = 0.72f)),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (isSelected) Amber else Panel)
+                    .clickable { onSelect(service) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Amber)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Carregando $serviceName…",
-                        color = White,
-                        fontSize = 13.sp
-                    )
-                }
+                Text(
+                    service.name,
+                    color = if (isSelected) Black else White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
             }
         }
+    }
+}
 
-        if (loadFailed) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Black.copy(alpha = 0.94f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "Não foi possível carregar o serviço",
-                        color = White,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
+@Composable
+fun StreamingWebViewScreen(serviceName: String, url: String, modifier: Modifier = Modifier, onBack: () -> Unit) {
+    var isLoaded by remember(url) { mutableStateOf(false) }
 
-                    Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Black),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .background(Black)
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        settings.apply {
+                            javaScriptEnabled = true
+                            domStorageEnabled = true
+                            databaseEnabled = true
+                            loadsImagesAutomatically = true
+                            javaScriptCanOpenWindowsAutomatically = true
+                            setSupportMultipleWindows(true)
+                            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                            cacheMode = WebSettings.LOAD_DEFAULT
+                            mediaPlaybackRequiresUserGesture = false
+                            
+                            useWideViewPort = true
+                            loadWithOverviewMode = true
+                            setSupportZoom(false)
+                            builtInZoomControls = false
+                            displayZoomControls = false
+                            
+                            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+                        }
 
-                    Text(
-                        "Verifique a conexão. Se a plataforma bloquear a reprodução incorporada, tente abrir pelo navegador.",
-                        color = Muted,
-                        textAlign = TextAlign.Center,
-                        fontSize = 12.sp
-                    )
+                        CookieManager.getInstance().setAcceptCookie(true)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                        }
 
-                    Spacer(Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            try {
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse(url)
-                                    )
-                                )
-                            } catch (_: Exception) {
-                                Toast.makeText(
-                                    context,
-                                    "Não foi possível abrir o navegador.",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                                isLoaded = false
                             }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Amber,
-                            contentColor = Black
-                        )
-                    ) {
-                        Text("ABRIR NO NAVEGADOR")
-                    }
 
-                    TextButton(onClick = onBack) {
-                        Text("VOLTAR AO PLAYER", color = Amber)
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                isLoaded = true
+                            }
+
+                            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: android.net.http.SslError?) {
+                                handler?.proceed()
+                            }
+                        }
+
+                        loadUrl(url)
                     }
+                },
+                update = { webView ->
+                    if (webView.tag != url) {
+                        webView.tag = url
+                        webView.loadUrl(url)
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            if (!isLoaded) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Amber)
                 }
             }
         }
@@ -1230,25 +1084,25 @@ private fun MenuRow(
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp
             )
-            Text(subtitle, color = Muted, fontSize = 12.sp)
+
+            Text(
+                subtitle,
+                color = Muted,
+                fontSize = 12.sp
+            )
         }
 
-        Text(
-            "›",
-            color = Amber,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Text("›", color = Amber, fontSize = 24.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 private fun timeText(milliseconds: Long): String {
     val totalSeconds = (milliseconds / 1000).coerceAtLeast(0)
 
-    return String.format(
+    String.format(
         Locale.getDefault(),
         "%d:%02d",
         totalSeconds / 60,
         totalSeconds % 60
-    )
+    ).let { return it }
 }
