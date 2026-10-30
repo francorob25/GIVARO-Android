@@ -62,7 +62,8 @@ private data class Track(
     val uri: Uri
 )
 
-private data class Service(val name: String, val url: String, val screenKey: String)
+// Classe Service pública para evitar conflitos de visibilidade no compilador Kotlin
+data class Service(val name: String, val url: String, val screenKey: String)
 
 private val services = listOf(
     Service("Apple Music", "https://music.apple.com", "apple"),
@@ -419,7 +420,6 @@ private fun GivaroScreen(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
 
-        // Modo Immersive Theater: Oculta o cabeçalho principal quando um serviço web está ativo
         if (selectedService == null && screen == "player") {
             Row(
                 modifier = Modifier
@@ -462,7 +462,6 @@ private fun GivaroScreen(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Carrossel visível apenas se não estiver em modo teatro imersivo absoluto
                     if (selectedService == null) {
                         StreamingCarousel(
                             selectedServiceKey = selectedServiceKey,
@@ -474,7 +473,6 @@ private fun GivaroScreen(
                     }
 
                     if (selectedService != null) {
-                        // Modo Immersive Theater Ativo para o serviço Web
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -511,7 +509,7 @@ private fun GivaroScreen(
                                 )
 
                                 Spacer(Modifier.weight(1f))
-                                Spacer(Modifier.width(60.dp)) // Espaço para equilibrar o título
+                                Spacer(Modifier.width(60.dp))
                             }
 
                             StreamingWebViewScreen(
