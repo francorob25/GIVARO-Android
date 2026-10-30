@@ -779,7 +779,7 @@ private fun LibraryScreen(
                         )
                     }
 
-                    HorizontalDivider(color = Panel)
+                    Divider(color = Panel)
                 }
             }
         }
@@ -900,7 +900,7 @@ private fun SettingsScreen() {
             )
         }
 
-        HorizontalDivider(color = Panel)
+        Divider(color = Panel)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -948,7 +948,7 @@ private fun MenuRow(
         Text("›", color = Muted, fontSize = 25.sp)
     }
 
-    HorizontalDivider(color = Panel)
+    Divider(color = Panel)
 }
 
 @Composable
