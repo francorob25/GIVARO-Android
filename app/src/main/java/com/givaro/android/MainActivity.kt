@@ -61,37 +61,36 @@ data class GivaroTrack(
     val source: String = "Givaro Cloud"
 )
 
-// Sugestões ricas de alta qualidade e com capas reais para enriquecer o app
-private val defaultFeaturedTracks = listOf(
+private val defaultFeaturedTracks: List<GivaroTrack> = listOf(
     GivaroTrack(
-        id: "jam_1",
-        title: "Neon Horizon",
-        artist: "Cyberpunk Audio",
-        album: "Synthwave Essentials",
-        uri: Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"),
-        artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
-        duration: 240000L,
-        source: "Givaro Featured"
+        id = "jam_1",
+        title = "Neon Horizon",
+        artist = "Cyberpunk Audio",
+        album = "Synthwave Essentials",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"),
+        artwork = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
+        duration = 240000L,
+        source = "Givaro Featured"
     ),
     GivaroTrack(
-        id: "jam_2",
-        title: "Acoustic Sunset",
-        artist: "Melody Road",
-        album: "Unplugged Sessions",
-        uri: Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"),
-        artwork: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80",
-        duration: 310000L,
-        source: "Givaro Featured"
+        id = "jam_2",
+        title = "Acoustic Sunset",
+        artist = "Melody Road",
+        album = "Unplugged Sessions",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"),
+        artwork = "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80",
+        duration = 310000L,
+        source = "Givaro Featured"
     ),
     GivaroTrack(
-        id: "jam_3",
-        title: "Deep Electronic Flow",
-        artist: "Neural Beats",
-        album: "Future Bass",
-        uri: Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"),
-        artwork: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
-        duration: 285000L,
-        source: "Givaro Featured"
+        id = "jam_3",
+        title = "Deep Electronic Flow",
+        artist = "Neural Beats",
+        album = "Future Bass",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"),
+        artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
+        duration = 285000L,
+        source = "Givaro Featured"
     )
 )
 
@@ -908,12 +907,10 @@ private fun formatTime(milliseconds: Long): String {
     return "%d:%02d".format(minutes, seconds)
 }
 
-// Motor de Busca Conectado à API Pública do Jamendo (Milhares de músicas e capas reais grátis)
 private fun searchJamendoMusic(query: String): List<GivaroTrack> {
     val results = mutableListOf<GivaroTrack>()
     try {
         val encoded = URLEncoder.encode(query, "UTF-8")
-        // ID de cliente público de teste do Jamendo para catálogos abertos
         val urlStr = "https://api.jamendo.com/v3.0/tracks/?client_id=59a4ad9a&format=json&limit=20&search=$encoded&include=musicinfo"
 
         val response = httpGet(urlStr)
