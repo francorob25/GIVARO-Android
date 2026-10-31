@@ -35,10 +35,8 @@ android {
     }
     kotlinOptions {
         jvmTarget = "1.8"
-        // IGNORA todos os avisos experimentais e de versão no build do GitHub Actions
+        allWarningsAsErrors = false
         freeCompilerArgs += listOf(
-            "-Xopt-in=kotlin.RequiresOptIn",
-            "-Xsuppress-version-warnings",
             "-P",
             "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"
         )
@@ -66,6 +64,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     
-    // Biblioteca Coil para as capas de áudio
+    // Biblioteca Coil para as capas de áudio via URL
     implementation("io.coil-kt:coil-compose:2.5.0")
 }
+
