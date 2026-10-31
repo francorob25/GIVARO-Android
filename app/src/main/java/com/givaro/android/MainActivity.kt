@@ -280,7 +280,7 @@ fun MainPlayerScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { }) {
-                Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior", tint = Color.White, modifier = Modifier.size(36.dp))
+                Icon(Icons.Default.ArrowBack, contentDescription = "Anterior", tint = Color.White, modifier = Modifier.size(36.dp))
             }
             IconButton(
                 onClick = onPlayToggle,
@@ -289,14 +289,14 @@ fun MainPlayerScreen(
                     .background(Color(0xFFFFB74D), RoundedCornerShape(32.dp))
             ) {
                 Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    imageVector = if (isPlaying) Icons.Default.Clear else Icons.Default.PlayArrow,
                     contentDescription = "Play/Pause",
                     tint = Color.Black,
                     modifier = Modifier.size(36.dp)
                 )
             }
             IconButton(onClick = { }) {
-                Icon(Icons.Default.SkipNext, contentDescription = "Próxima", tint = Color.White, modifier = Modifier.size(36.dp))
+                Icon(Icons.Default.ArrowForward, contentDescription = "Próxima", tint = Color.White, modifier = Modifier.size(36.dp))
             }
         }
     }
