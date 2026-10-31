@@ -1,8 +1,6 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-@file:Suppress("OPT_IN_IS_NOT_ENABLED", "EXPERIMENTAL_IS_NOT_ENABLED")
-
 package com.givaro.android
 
+import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,367 +10,320 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import java.net.URL
+import org.json.JSONObject
+import java.net.HttpURLConnection
 import java.net.URLEncoder
+import java.net.URL
+import java.util.concurrent.Executors
 
-data class Station(
-    val name: String,
-    val streamUrl: String,
-    val favicon: String,
-    val genre: String
+private val Background = Color(0xFF090B10)
+private val SurfaceDark = Color(0xFF151922)
+private val Accent = Color(0xFFFF7A24)
+private val TextWhite = Color(0xFFF4F5F7)
+private val TextGray = Color(0xFF9299A5)
+
+data class MusicTrack(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val artwork: String?
 )
 
 class MainActivity : ComponentActivity() {
+
     private var mediaPlayer: MediaPlayer? = null
+    private val executor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
-            GivaroTheme {
-                GivaroApp(
-                    onPlayStream = { url -> playAudio(url) },
-                    onPauseStream = { pauseAudio() },
-                    onResumeStream = { resumeAudio() }
-                )
+            GivaroApp(
+                onPlayTrack = { track ->
+                    playTrack(track)
+                }
+            )
+        }
+    }
+
+    private fun playTrack(track: MusicTrack) {
+        executor.execute {
+            try {
+                val streamUrl =
+                    "https://api.audius.co/v1/tracks/${track.id}/stream?app_name=GIVARO"
+
+                runOnUiThread {
+                    try {
+                        mediaPlayer?.release()
+                        mediaPlayer = MediaPlayer().apply {
+                            setAudioAttributes(
+                                AudioAttributes.Builder()
+                                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                    .build()
+                            )
+
+                            setDataSource(streamUrl)
+
+                            setOnPreparedListener {
+                                it.start()
+                            }
+
+                            setOnErrorListener { player, _, _ ->
+                                player.release()
+                                mediaPlayer = null
+                                true
+                            }
+
+                            prepareAsync()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        }
-    }
-
-    private fun playAudio(url: String) {
-        try {
-            mediaPlayer?.release()
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(url)
-                prepareAsync()
-                setOnPreparedListener { start() }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun pauseAudio() {
-        mediaPlayer?.let {
-            if (it.isPlaying) it.pause()
-        }
-    }
-
-    private fun resumeAudio() {
-        mediaPlayer?.let {
-            if (!it.isPlaying) it.start()
         }
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         mediaPlayer?.release()
         mediaPlayer = null
+        executor.shutdown()
+        super.onDestroy()
     }
-}
-
-@Composable
-fun GivaroTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            background = Color(0xFF121212),
-            surface = Color(0xFF1E1E1E),
-            primary = Color(0xFFFFB74D),
-            onBackground = Color.White,
-            onSurface = Color.White
-        ),
-        content = content
-    )
 }
 
 @Composable
 fun GivaroApp(
-    onPlayStream: (String) -> Unit,
-    onPauseStream: () -> Unit,
-    onResumeStream: () -> Unit
+    onPlayTrack: (MusicTrack) -> Unit
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
-    var currentStation by remember { mutableStateOf<Station?>(null) }
-    var isPlaying by remember { mutableStateOf(false) }
+    var searchText by remember { mutableStateOf("") }
+    var tracks by remember { mutableStateOf<List<MusicTrack>>(emptyList()) }
+    var selectedTrack by remember { mutableStateOf<MusicTrack?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "GIVARO",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 3.sp,
-                            color = Color(0xFFFFB74D)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF121212))
-            )
-        },
-        bottomBar = {
-            NavigationBar(containerColor = Color(0xFF181818)) {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Início") },
-                    label = { Text("Início") }
+    val executor = remember {
+        Executors.newSingleThreadExecutor()
+    }
+
+    fun searchMusic(query: String) {
+        if (query.isBlank()) return
+
+        loading = true
+        errorMessage = ""
+
+        executor.execute {
+            try {
+                val encodedQuery =
+                    URLEncoder.encode(query, "UTF-8")
+
+                val url = URL(
+                    "https://api.audius.co/v1/tracks/search" +
+                        "?query=$encodedQuery&app_name=GIVARO"
                 )
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Search, contentDescription = "Streaming") },
-                    label = { Text("Streaming") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Biblioteca") },
-                    label = { Text("Biblioteca") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "EQ") },
-                    label = { Text("EQ") }
-                )
-            }
-        },
-        containerColor = Color(0xFF121212)
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                0, 2, 3 -> MainPlayerScreen(
-                    currentStation = currentStation,
-                    isPlaying = isPlaying,
-                    onPlayToggle = {
-                        if (isPlaying) {
-                            onPauseStream()
-                            isPlaying = false
-                        } else {
-                            currentStation?.let {
-                                resumeAudio()
-                                isPlaying = true
-                            }
+
+                val connection =
+                    url.openConnection() as HttpURLConnection
+
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+
+                val response = connection.inputStream
+                    .bufferedReader()
+                    .use { it.readText() }
+
+                connection.disconnect()
+
+                val json = JSONObject(response)
+                val data = json.optJSONArray("data")
+
+                val result = mutableListOf<MusicTrack>()
+
+                if (data != null) {
+                    for (i in 0 until data.length()) {
+                        val item = data.getJSONObject(i)
+
+                        val id = item.optString("id")
+                        val title = item.optString("title")
+                        val artist = item
+                            .optJSONObject("user")
+                            ?.optString("name")
+                            ?: "Artista desconhecido"
+
+                        val artwork = item
+                            .optJSONObject("artwork")
+                            ?.optString("150x150")
+
+                        if (id.isNotBlank() && title.isNotBlank()) {
+                            result.add(
+                                MusicTrack(
+                                    id = id,
+                                    title = title,
+                                    artist = artist,
+                                    artwork = artwork
+                                )
+                            )
                         }
                     }
-                )
-                1 -> StreamingSearchScreen(
-                    onStationSelected = { station ->
-                        currentStation = station
-                        isPlaying = true
-                        onPlayStream(station.streamUrl)
-                        selectedTab = 0
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun MainPlayerScreen(
-    currentStation: Station?,
-    isPlaying: Boolean,
-    onPlayToggle: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceEvenly
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF282828)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (currentStation?.favicon.orEmpty().isNotEmpty()) {
-                AsyncImage(
-                    model = currentStation?.favicon,
-                    contentDescription = "Portada",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = Color.Gray
-                )
-            }
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = currentStation?.name ?: "Selecione uma faixa",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = currentStation?.genre ?: "Givaro Audio Hub",
-                fontSize = 14.sp,
-                color = Color.Gray
-            )
-        }
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Color(0xFF333333))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.3f)
-                        .fillMaxHeight()
-                        .background(Color(0xFFFFB74D))
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Ao Vivo", fontSize = 12.sp, color = Color.Gray)
-                Text("Givaro Stream", fontSize = 12.sp, color = Color.Gray)
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { }) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Anterior", tint = Color.White, modifier = Modifier.size(36.dp))
-            }
-            IconButton(
-                onClick = onPlayToggle,
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(Color(0xFFFFB74D), RoundedCornerShape(32.dp))
-            ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Clear else Icons.Default.PlayArrow,
-                    contentDescription = "Play/Pause",
-                    tint = Color.Black,
-                    modifier = Modifier.size(36.dp)
-                )
-            }
-            IconButton(onClick = { }) {
-                Icon(Icons.Default.ArrowForward, contentDescription = "Próxima", tint = Color.White, modifier = Modifier.size(36.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
-    var searchQuery by remember { mutableStateOf("") }
-    var stations by remember { mutableStateOf<List<Station>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
-
-    fun searchRadio(query: String) {
-        if (query.isBlank()) return
-        isLoading = true
-        scope.launch(Dispatchers.IO) {
-            try {
-                val encodedQuery = URLEncoder.encode(query, "UTF-8")
-                val url = "https://de1.api.radio-browser.info/json/stations/byname/$encodedQuery"
-                val response = URL(url).readText()
-                val jsonArray = JSONArray(response)
-                val list = mutableListOf<Station>()
-
-                for (i in 0 until minOf(jsonArray.length(), 30)) {
-                    val obj = jsonArray.getJSONObject(i)
-                    list.add(
-                        Station(
-                            name = obj.optString("name", "Desconhecido"),
-                            streamUrl = obj.optString("url_resolved", ""),
-                            favicon = obj.optString("favicon", ""),
-                            genre = obj.optString("tags", "Música Global")
-                        )
-                    )
                 }
-                withContext(Dispatchers.Main) {
-                    stations = list
-                    isLoading = false
-                }
+
+                (this@GivaroAppActivityOrNull())
+
             } catch (e: Exception) {
                 e.printStackTrace()
-                withContext(Dispatchers.Main) { isLoading = false }
             }
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Procurar rádio, artista ou estilo...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(24.dp),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = {
-                focusManager.clearFocus()
-                searchRadio(searchQuery)
-            })
-        )
+    MaterialTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Background
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "GIVARO",
+                        color = TextWhite,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 4.sp
+                    )
 
-        Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
 
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFFFFB74D))
-            }
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(stations) { station ->
-                    StationRowItem(station = station, onClick = { onStationSelected(station) })
+                    Text(
+                        text = "MUSIC",
+                        color = Accent,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Sua música. Seu universo.",
+                    color = TextGray,
+                    fontSize = 14.sp
+                )
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                Text(
+                    text = "DESCUBRA",
+                    color = Accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            "Buscar músicas ou artistas",
+                            color = TextGray
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite,
+                        focusedBorderColor = Accent,
+                        unfocusedBorderColor = SurfaceDark,
+                        cursorColor = Accent
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = {
+                        searchMusic(searchText)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Accent,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        "BUSCAR MÚSICA",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                if (loading) {
+                    CircularProgressIndicator(
+                        color = Accent
+                    )
+                }
+
+                if (errorMessage.isNotBlank()) {
+                    Text(
+                        errorMessage,
+                        color = Color.Red
+                    )
+                }
+
+                Text(
+                    text = "RESULTADOS",
+                    color = TextGray,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(tracks) { track ->
+                        TrackItem(
+                            track = track,
+                            onClick = {
+                                selectedTrack = track
+                                onPlayTrack(track)
+                            }
+                        )
+                    }
+                }
+
+                selectedTrack?.let { track ->
+                    PlayerBar(
+                        track = track
+                    )
                 }
             }
         }
@@ -380,54 +331,125 @@ fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
 }
 
 @Composable
-fun StationRowItem(station: Station, onClick: () -> Unit) {
+fun TrackItem(
+    track: MusicTrack,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1E1E1E))
+            .background(
+                SurfaceDark,
+                RoundedCornerShape(14.dp)
+            )
             .clickable { onClick() }
-            .padding(12.dp),
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF282828)),
+                .background(
+                    Color(0xFF252B36),
+                    RoundedCornerShape(10.dp)
+                ),
             contentAlignment = Alignment.Center
         ) {
-            if (station.favicon.isNotEmpty()) {
-                AsyncImage(
-                    model = station.favicon,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(Icons.Default.Star, contentDescription = null, tint = Color.Gray)
-            }
+            Text(
+                "♫",
+                color = Accent,
+                fontSize = 25.sp
+            )
         }
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
             Text(
-                text = station.name,
+                track.title,
+                color = TextWhite,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                maxLines = 1
             )
+
             Text(
-                text = station.genre,
+                track.artist,
+                color = TextGray,
                 fontSize = 12.sp,
-                color = Color.Gray,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                maxLines = 1
             )
         }
 
-        Icon(Icons.Default.PlayArrow, contentDescription = "Tocar", tint = Color(0xFFFFB74D))
+        Text(
+            "▶",
+            color = Accent,
+            fontSize = 19.sp
+        )
+    }
+}
+
+@Composable
+fun PlayerBar(
+    track: MusicTrack
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Color(0xFF202631),
+                RoundedCornerShape(16.dp)
+            )
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .background(
+                    Accent.copy(alpha = 0.15f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "♫",
+                color = Accent,
+                fontSize = 22.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                "TOCANDO AGORA",
+                color = Accent,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                track.title,
+                color = TextWhite,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+
+            Text(
+                track.artist,
+                color = TextGray,
+                fontSize = 11.sp
+            )
+        }
+
+        Text(
+            "♫",
+            color = Accent,
+            fontSize = 25.sp
+        )
     }
 }
