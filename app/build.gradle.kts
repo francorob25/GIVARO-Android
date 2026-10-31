@@ -35,11 +35,10 @@ android {
     }
     kotlinOptions {
         jvmTarget = "1.8"
-        // Força o compilador a ignorar avisos experimentais e não falhar o build
         freeCompilerArgs += listOf(
-            "-Xopt-in=kotlin.RequiresOptIn",
-            "-Xsuppress-version-warnings",
-            "-Xjvm-default=all"
+            "-opt-in=kotlin.RequiresOptIn",
+            "-P",
+            "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"
         )
     }
     buildFeatures {
