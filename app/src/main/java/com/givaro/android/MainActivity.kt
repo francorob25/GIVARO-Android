@@ -192,6 +192,7 @@ fun GivaroApp(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPlayerScreen(
     currentStation: Station?,
