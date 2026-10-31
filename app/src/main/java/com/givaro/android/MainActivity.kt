@@ -1,4 +1,3 @@
-
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.givaro.android
@@ -215,7 +214,6 @@ fun GivaroApp(
 
     fun loadLocalMusic() {
         val list = mutableListOf<GivaroTrack>()
-
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
         val projection = arrayOf(
@@ -237,21 +235,11 @@ fun GivaroApp(
             "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
         )?.use { cursor ->
 
-            val idColumn = cursor.getColumnIndexOrThrow(
-                MediaStore.Audio.Media._ID
-            )
-            val titleColumn = cursor.getColumnIndexOrThrow(
-                MediaStore.Audio.Media.TITLE
-            )
-            val artistColumn = cursor.getColumnIndexOrThrow(
-                MediaStore.Audio.Media.ARTIST
-            )
-            val albumColumn = cursor.getColumnIndexOrThrow(
-                MediaStore.Audio.Media.ALBUM
-            )
-            val durationColumn = cursor.getColumnIndexOrThrow(
-                MediaStore.Audio.Media.DURATION
-            )
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+            val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
@@ -307,13 +295,7 @@ fun GivaroApp(
                 NavigationBar(
                     containerColor = Panel
                 ) {
-                    val names = listOf(
-                        "Player",
-                        "Buscar",
-                        "Biblioteca",
-                        "Equalizador"
-                    )
-
+                    val names = listOf("Player", "Buscar", "Biblioteca", "Equalizador")
                     val icons = listOf(
                         Icons.Default.MusicNote,
                         Icons.Default.Search,
@@ -459,7 +441,7 @@ fun PlayerScreen(
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        Icons.Default.GraphicEq,
+                        Icons.Default.MusicNote,
                         contentDescription = null,
                         tint = Orange,
                         modifier = Modifier.size(100.dp)
@@ -599,10 +581,7 @@ fun SearchScreen(
             fontWeight = FontWeight.Bold
         )
 
-        Text(
-            "Encontre novas músicas",
-            color = Silver
-        )
+        Text("Encontre novas músicas", color = Silver)
 
         Spacer(Modifier.height(20.dp))
 
@@ -804,7 +783,7 @@ fun TrackRow(
         }
 
         Icon(
-            Icons.Default.PlayCircle,
+            Icons.Default.PlayArrow,
             contentDescription = "Reproduzir",
             tint = Orange,
             modifier = Modifier.size(29.dp)
@@ -831,10 +810,7 @@ fun EqualizerScreen(
             fontWeight = FontWeight.Bold
         )
 
-        Text(
-            "Personalize seu som",
-            color = Silver
-        )
+        Text("Personalize seu som", color = Silver)
 
         Spacer(Modifier.height(25.dp))
 
@@ -860,7 +836,7 @@ fun EqualizerScreen(
 
                 Button(
                     onClick = {
-                        val session = controller?.audioSessionId ?: 0
+                        val session = controller?.sessionExtras?.getInt("audioSessionId") ?: 0
                         if (session != 0) {
                             onEqualizer(session)
                             enabled = true
@@ -899,32 +875,17 @@ private fun formatTime(milliseconds: Long): String {
     return "%d:%02d".format(minutes, seconds)
 }
 
-/*
- * Busca no catálogo Audius.
- * A duração informada pelo catálogo não comprova, sozinha,
- * que o arquivo transmitido seja uma gravação integral.
- */
 private suspend fun searchAudius(query: String): List<GivaroTrack> {
-    val hosts = listOf(
-        "https://api.audius.co"
-    )
-
+    val hosts = listOf("https://api.audius.co")
     var lastError: Exception? = null
 
     for (host in hosts) {
         try {
-            val encoded = java.net.URLEncoder.encode(
-                query,
-                "UTF-8"
-            )
-
-            val response = httpGet(
-                "$host/v1/tracks/search?query=$encoded&limit=30"
-            )
+            val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+            val response = httpGet("$host/v1/tracks/search?query=$encoded&limit=30")
 
             val json = JSONObject(response)
-            val data = json.optJSONArray("data")
-                ?: return emptyList()
+            val data = json.optJSONArray("data") ?: return emptyList()
 
             val list = mutableListOf<GivaroTrack>()
 
@@ -940,21 +901,13 @@ private suspend fun searchAudius(query: String): List<GivaroTrack> {
                 val durationSeconds = item.optLong("duration", 0L)
                 val streamable = item.optBoolean("is_streamable", false)
 
-                // Não aceitar resultados sem duração ou sem indicação de stream.
-                if (
-                    id.isBlank() ||
-                    title.isBlank() ||
-                    durationSeconds <= 0L ||
-                    !streamable
-                ) continue
+                if (id.isBlank() || title.isBlank() || durationSeconds <= 0L || !streamable) continue
 
                 val artwork = item.optJSONObject("artwork")
                     ?.optString("150x150")
                     ?.takeIf { it.isNotBlank() && it != "null" }
 
-                val streamUri = Uri.parse(
-                    "$host/v1/tracks/$id/stream"
-                )
+                val streamUri = Uri.parse("$host/v1/tracks/$id/stream")
 
                 list.add(
                     GivaroTrack(
@@ -979,20 +932,15 @@ private suspend fun searchAudius(query: String): List<GivaroTrack> {
 }
 
 private fun httpGet(url: String): String {
-    val connection = URL(url).openConnection()
-        as HttpURLConnection
+    val connection = URL(url).openConnection() as HttpURLConnection
 
     return try {
         connection.connectTimeout = 12000
         connection.readTimeout = 15000
         connection.requestMethod = "GET"
-        connection.setRequestProperty(
-            "User-Agent",
-            "GIVARO-Android"
-        )
+        connection.setRequestProperty("User-Agent", "GIVARO-Android")
 
         val code = connection.responseCode
-
         if (code !in 200..299) {
             throw Exception("HTTP $code")
         }
