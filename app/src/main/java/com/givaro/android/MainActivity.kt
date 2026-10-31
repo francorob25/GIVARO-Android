@@ -1,3 +1,4 @@
+
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.givaro.android
@@ -85,7 +86,13 @@ class MainActivity : ComponentActivity() {
 
     private fun resumeAudio() {
         mediaPlayer?.let {
-            if (!it.isPlaying) it.start()
+            if (!it.isPlaying) {
+                try {
+                    it.start()
+                } catch (e: IllegalStateException) {
+                    e.printStackTrace()
+                }
+            }
         }
     }
 
@@ -311,15 +318,21 @@ fun MainPlayerScreen(
                         RoundedCornerShape(50)
                     )
             ) {
-                Icon(
-                    imageVector = if (isPlaying)
-                        Icons.Default.Pause
-                    else
-                        Icons.Default.PlayArrow,
-                    contentDescription = "Play/Pause",
-                    tint = Color.Black,
-                    modifier = Modifier.size(38.dp)
-                )
+                if (isPlaying) {
+                    Text(
+                        text = "Ⅱ",
+                        color = Color.Black,
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Reproduzir",
+                        tint = Color.Black,
+                        modifier = Modifier.size(38.dp)
+                    )
+                }
             }
 
             IconButton(onClick = {}) {
@@ -594,7 +607,7 @@ fun StationRowItem(
                 )
             } else {
                 Icon(
-                    Icons.Default.GraphicEq,
+                    Icons.Default.MusicNote,
                     contentDescription = null,
                     tint = Color(0xFFFFB74D)
                 )
