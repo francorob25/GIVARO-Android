@@ -206,7 +206,6 @@ private fun SplashScreen() {
     }
 }
 
-// Ícone de EQ Profissional desenhado em código puro (Canvas)
 @Composable
 private fun ProfessionalEqIcon(
     modifier: Modifier = Modifier,
@@ -222,14 +221,12 @@ private fun ProfessionalEqIcon(
         val spacing = width / 4f
         val startX = spacing / 2f
 
-        // 4 Barras com knobs em alturas variadas
         val knobs = listOf(0.3f, 0.7f, 0.4f, 0.8f)
 
         knobs.forEachIndexed { index, knobRatio ->
             val x = startX + index * spacing
             val knobY = height * knobRatio
 
-            // Linha do fader
             drawLine(
                 color = color.copy(alpha = 0.4f),
                 start = Offset(x, height * 0.15f),
@@ -238,7 +235,6 @@ private fun ProfessionalEqIcon(
                 cap = StrokeCap.Round
             )
 
-            // Knob (circulo)
             drawCircle(
                 color = color,
                 radius = knobRadius,
@@ -462,7 +458,6 @@ private fun GivaroScreen(
             .background(Black)
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Cabeçalho Principal
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -514,7 +509,6 @@ private fun GivaroScreen(
             }
         }
 
-        // Conteúdo central adaptativo
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -588,7 +582,6 @@ private fun GivaroScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Barra de navegação inferior
         NavigationBar(
             screen = screen,
             onNavigate = {
@@ -627,7 +620,6 @@ private fun PlayerScreen(
     ) {
         Spacer(Modifier.height(4.dp))
 
-        // Capa com Logótipo
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -652,7 +644,6 @@ private fun PlayerScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Informações da Música
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -687,7 +678,6 @@ private fun PlayerScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // Linha de Progresso
         Slider(
             value = position.coerceIn(0f, duration.coerceAtLeast(1).toFloat()),
             onValueChange = onSeek,
@@ -710,7 +700,6 @@ private fun PlayerScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Controles de Reprodução
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -741,7 +730,6 @@ private fun PlayerScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // Controle de Volume
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -765,7 +753,6 @@ private fun PlayerScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Carrossel de Streaming
         Text(
             "SERVIÇOS DE MÚSICA",
             color = Muted,
@@ -1071,7 +1058,7 @@ private fun SettingsScreen() {
         }
 
         Spacer(Modifier.height(12.dp))
-        HorizontalDivider(color = Panel)
+        Divider(color = Panel)
         Spacer(Modifier.height(12.dp))
 
         Row(
@@ -1144,7 +1131,6 @@ private fun NavigationBar(
         NavItem("⌂", "Início", screen == "player") { onNavigate("player") }
         NavItem("♫", "Biblioteca", screen == "library") { onNavigate("library") }
 
-        // Item de EQ com ícone desenhado
         Column(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
