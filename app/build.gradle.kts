@@ -35,6 +35,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = "1.8"
+        // Força o compilador a ignorar avisos experimentais e suprime verificação de versão do Compose
         freeCompilerArgs += listOf(
             "-opt-in=kotlin.RequiresOptIn",
             "-P",
@@ -45,12 +46,22 @@ android {
         compose = true
     }
     composeOptions {
+        // Versão compatível com o Kotlin Plugin configurado (provavelmente 1.9.0)
         kotlinCompilerExtensionVersion = "1.5.3"
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+// Para evitar problemas de resolução de Protobuf transitivos
+configurations.all {
+    resolutionStrategy {
+        // Força uma versão estável e disponível do Protobuf
+        force("com.google.protobuf:protobuf-parent:3.19.4")
+        force("com.google.protobuf:protobuf-javalite:3.19.4")
     }
 }
 
@@ -66,6 +77,6 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     
     // Media3 Exoplayer estável para Android
-    implementation("androidx.media3:media3-exoplayer:1.2.0")
-    implementation("androidx.media3:media3-session:1.2.0")
+    implementation("androidx.media3:media3-exoplayer:1.2.1")
+    implementation("androidx.media3:media3-session:1.2.1")
 }
