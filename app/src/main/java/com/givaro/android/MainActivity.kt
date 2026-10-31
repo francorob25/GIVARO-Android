@@ -24,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -175,7 +175,7 @@ fun GivaroApp(
                             isPlaying = false
                         } else {
                             currentStation?.let {
-                                onResumeStream()
+                                resumeAudio()
                                 isPlaying = true
                             }
                         }
@@ -308,7 +308,7 @@ fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
     var stations by remember { mutableStateOf<List<Station>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     fun searchRadio(query: String) {
         if (query.isBlank()) return
@@ -358,7 +358,7 @@ fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
             shape = RoundedCornerShape(24.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = {
-                keyboardController?.hide()
+                focusManager.clearFocus()
                 searchRadio(searchQuery)
             })
         )
