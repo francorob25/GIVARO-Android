@@ -315,7 +315,7 @@ fun GivaroApp(
                     )
 
                     val icons = listOf(
-                        Icons.Default.GraphicEq,
+                        Icons.Default.MusicNote,
                         Icons.Default.Search,
                         Icons.Default.LibraryMusic,
                         Icons.Default.Equalizer
