@@ -1,3 +1,5 @@
+@file:Suppress("OPT_IN_IS_NOT_ENABLED", "EXPERIMENTAL_IS_NOT_ENABLED")
+
 package com.givaro.android
 
 import android.media.MediaPlayer
@@ -192,6 +194,7 @@ fun GivaroApp(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPlayerScreen(
     currentStation: Station?,
@@ -291,6 +294,7 @@ fun MainPlayerScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
@@ -426,4 +430,3 @@ fun StationRowItem(station: Station, onClick: () -> Unit) {
         Icon(Icons.Default.PlayArrow, contentDescription = "Tocar", tint = Color(0xFFFFB74D))
     }
 }
-
