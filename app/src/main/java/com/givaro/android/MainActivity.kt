@@ -1,4 +1,4 @@
-package com.givaro.audiohub
+package com.givaro.android
 
 import android.media.MediaPlayer
 import android.os.Bundle
@@ -35,7 +35,6 @@ import org.json.JSONArray
 import java.net.URL
 import java.net.URLEncoder
 
-// Modelos de Dados
 data class Station(
     val name: String,
     val streamUrl: String,
@@ -91,14 +90,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Tema Minimalista Escuro
 @Composable
 fun GivaroTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = darkColorScheme(
             background = Color(0xFF121212),
             surface = Color(0xFF1E1E1E),
-            primary = Color(0xFFFFB74D), // Tom dourado suave dos controlos
+            primary = Color(0xFFFFB74D),
             onBackground = Color.White,
             onSurface = Color.White
         ),
@@ -186,7 +184,7 @@ fun GivaroApp(
                         currentStation = station
                         isPlaying = true
                         onPlayStream(station.streamUrl)
-                        selectedTab = 0 // Volta para o player principal ao selecionar
+                        selectedTab = 0
                     }
                 )
             }
@@ -194,7 +192,6 @@ fun GivaroApp(
     }
 }
 
-// 1. Tela do Player Principal (Com a Capa 1:1 e Design Minimalista)
 @Composable
 fun MainPlayerScreen(
     currentStation: Station?,
@@ -210,7 +207,6 @@ fun MainPlayerScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        // Capa em Destaque 1:1 (Portada)
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -236,7 +232,6 @@ fun MainPlayerScreen(
             }
         }
 
-        // Título e Artista/Estação
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = currentStation?.name ?: "Selecione uma faixa",
@@ -254,7 +249,6 @@ fun MainPlayerScreen(
             )
         }
 
-        // Barra de Progresso
         Column(modifier = Modifier.fillMaxWidth()) {
             Slider(
                 value = progress,
@@ -274,7 +268,6 @@ fun MainPlayerScreen(
             }
         }
 
-        // Controles Principais
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -303,7 +296,6 @@ fun MainPlayerScreen(
     }
 }
 
-// 2. Aba Streaming (Buscador Direto)
 @Composable
 fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
@@ -312,7 +304,6 @@ fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // Função de Busca na API do Radio Browser
     fun searchRadio(query: String) {
         if (query.isBlank()) return
         isLoading = true
@@ -351,7 +342,6 @@ fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Campo de Pesquisa Limpo
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -415,7 +405,7 @@ fun StationRowItem(station: Station, onClick: () -> Unit) {
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Icon(Icons.Default.Radio, contentDescription = null, tint = Color.Gray)
+                Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.Gray)
             }
         }
 
