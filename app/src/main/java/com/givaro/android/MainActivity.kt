@@ -194,15 +194,12 @@ fun GivaroApp(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPlayerScreen(
     currentStation: Station?,
     isPlaying: Boolean,
     onPlayToggle: () -> Unit
 ) {
-    var progress by remember { mutableStateOf(0.3f) }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -253,16 +250,27 @@ fun MainPlayerScreen(
         }
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            Slider(
-                value = progress,
-                onValueChange = { progress = it }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color(0xFF333333))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.3f)
+                        .fillMaxHeight()
+                        .background(Color(0xFFFFB74D))
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("0:45", fontSize = 12.sp, color = Color.Gray)
-                Text("3:30", fontSize = 12.sp, color = Color.Gray)
+                Text("Ao Vivo", fontSize = 12.sp, color = Color.Gray)
+                Text("Givaro Stream", fontSize = 12.sp, color = Color.Gray)
             }
         }
 
@@ -294,7 +302,6 @@ fun MainPlayerScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
