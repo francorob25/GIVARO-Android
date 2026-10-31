@@ -134,6 +134,7 @@ class MainActivity : ComponentActivity() {
     private fun openEqualizer(sessionId: Int) {
         try {
             equalizer?.release()
+            // Se o ID for válido, abre o equalizador de hardware do Android
             equalizer = Equalizer(0, sessionId).apply {
                 enabled = true
             }
@@ -334,7 +335,7 @@ fun GivaroApp(
                         Icons.Default.MusicNote,
                         Icons.Default.Search,
                         Icons.Default.LibraryMusic,
-                        Icons.Default.Globe,
+                        Icons.Default.Language,
                         Icons.Default.Equalizer
                     )
 
@@ -624,7 +625,7 @@ fun SearchScreen(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Ex: Reggaeton, Rock, Pop...") },
+            placeholder = { Text("Ex: Daddy Yankee, Reggaeton, Rock...") },
             leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = null)
             },
@@ -759,7 +760,6 @@ fun LibraryScreen(
     }
 }
 
-// Nova Aba de Streaming com WebView integrada para as plataformas
 @Composable
 fun StreamingWebViewScreen() {
     var selectedUrl by remember { mutableStateOf("https://open.spotify.com") }
@@ -778,7 +778,7 @@ fun StreamingWebViewScreen() {
             .padding(16.dp)
     ) {
         Text(
-            "Plataformas",
+            "Streaming",
             color = White,
             fontSize = 25.sp,
             fontWeight = FontWeight.Bold
@@ -787,7 +787,6 @@ fun StreamingWebViewScreen() {
 
         Spacer(Modifier.height(12.dp))
 
-        // Barra de seleção de plataformas em linhas horizontais scrolláveis
         Row(
             Modifier
                 .fillMaxWidth()
@@ -815,7 +814,6 @@ fun StreamingWebViewScreen() {
 
         Spacer(Modifier.height(12.dp))
 
-        // WebView que renderiza a plataforma selecionada dentro do App
         Box(
             Modifier
                 .fillMaxSize()
@@ -843,6 +841,90 @@ fun StreamingWebViewScreen() {
                 modifier = Modifier.fillMaxSize()
             )
         }
+    }
+}
+
+// Tela de Equalizador atualizada com suporte resiliente a sessões ativas
+@Composable
+fun EqualizerScreen(
+    controller: MediaController?,
+    onEqualizer: (Int) -> Unit
+) {
+    var enabled by remember { mutableStateOf(false) }
+    var audioSessionId by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(controller) {
+        while (true) {
+            val session = controller?.sessionExtras?.getInt("audioSessionId") ?: 0
+            if (session != 0) {
+                audioSessionId = session
+            }
+            delay(1000)
+        }
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text(
+            "Equalizador",
+            color = White,
+            fontSize = 29.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text("Personalize seu som", color = Silver)
+
+        Spacer(Modifier.height(25.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Panel)
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Text(
+                    "EQUALIZAÇÃO DE ÁUDIO",
+                    color = Orange,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    if (audioSessionId != 0) "Sessão de áudio ativa detetada! Puxe os controlos abaixo."
+                    else "Reproduza uma música primeiro para ativar os efeitos de equalização do aparelho.",
+                    color = Silver
+                )
+
+                Spacer(Modifier.height(15.dp))
+
+                Button(
+                    onClick = {
+                        val activeSession = if (audioSessionId != 0) audioSessionId else 1
+                        onEqualizer(activeSession)
+                        enabled = true
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Orange
+                    )
+                ) {
+                    Text(
+                        if (enabled) "Equalizador ativado"
+                        else "Ativar equalizador",
+                        color = Black
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            "Nota: O equalizador depende das APIs de efeitos sonoros nativas do Android integradas no seu dispositivo.",
+            color = Silver,
+            fontSize = 12.sp
+        )
     }
 }
 
@@ -908,80 +990,6 @@ fun TrackRow(
             contentDescription = "Reproduzir",
             tint = Orange,
             modifier = Modifier.size(29.dp)
-        )
-    }
-}
-
-@Composable
-fun EqualizerScreen(
-    controller: MediaController?,
-    onEqualizer: (Int) -> Unit
-) {
-    var enabled by remember { mutableStateOf(false) }
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        Text(
-            "Equalizador",
-            color = White,
-            fontSize = 29.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text("Personalize seu som", color = Silver)
-
-        Spacer(Modifier.height(25.dp))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Panel)
-        ) {
-            Column(Modifier.padding(20.dp)) {
-                Text(
-                    "EQUALIZAÇÃO DE ÁUDIO",
-                    color = Orange,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(Modifier.height(10.dp))
-
-                Text(
-                    "O equalizador depende da sessão de áudio do dispositivo. " +
-                        "Ajustes disponíveis podem variar conforme o aparelho.",
-                    color = Silver
-                )
-
-                Spacer(Modifier.height(15.dp))
-
-                Button(
-                    onClick = {
-                        val session = controller?.sessionExtras?.getInt("audioSessionId") ?: 0
-                        if (session != 0) {
-                            onEqualizer(session)
-                            enabled = true
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Orange
-                    )
-                ) {
-                    Text(
-                        if (enabled) "Equalizador ativado"
-                        else "Ativar equalizador",
-                        color = Black
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Text(
-            "O painel de bandas e os presets dependem dos recursos de áudio disponíveis no aparelho.",
-            color = Silver,
-            fontSize = 12.sp
         )
     }
 }
