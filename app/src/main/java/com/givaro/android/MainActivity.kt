@@ -198,7 +198,7 @@ fun MainPlayerScreen(
     isPlaying: Boolean,
     onPlayToggle: () -> Unit
 ) {
-    var progress by remember { mutableFloatStateOf(0.3f) }
+    var progress by remember { mutableStateOf(0.3f) }
 
     Column(
         modifier = Modifier
@@ -426,3 +426,4 @@ fun StationRowItem(station: Station, onClick: () -> Unit) {
         Icon(Icons.Default.PlayArrow, contentDescription = "Tocar", tint = Color(0xFFFFB74D))
     }
 }
+
