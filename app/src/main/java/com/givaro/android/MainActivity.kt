@@ -347,12 +347,6 @@ fun MainPlayerScreen(
     }
 }
 
-/*
- * VISUALIZADOR GIVARO
- * Animação de espectro inspirada no Windows Media Player.
- * Quando a reprodução está pausada, as barras ficam reduzidas.
- */
-
 @Composable
 fun NoCoverVisualizer(isPlaying: Boolean) {
     val colors = listOf(
@@ -606,10 +600,11 @@ fun StationRowItem(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Icon(
-                    Icons.Default.MusicNote,
-                    contentDescription = null,
-                    tint = Color(0xFFFFB74D)
+                Text(
+                    text = "♪",
+                    color = Color(0xFFFFB74D),
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
