@@ -1,1269 +1,443 @@
-package com.givaro.android
+package com.givaro.audiohub
 
-import android.Manifest
-import android.content.ContentUris
-import android.content.pm.PackageManager
 import android.media.MediaPlayer
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
-import android.webkit.CookieManager
-import android.webkit.SslErrorHandler
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import kotlinx.coroutines.delay
+import coil.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import java.net.URL
+import java.net.URLEncoder
 
-private val Amber = Color(0xFFFFA726)
-private val Black = Color(0xFF08090C)
-private val Panel = Color(0xFF15171C)
-private val Muted = Color(0xFF9297A1)
-private val White = Color(0xFFF5F5F7)
-
-private data class Track(
-    val id: Long,
-    val title: String,
-    val artist: String,
-    val duration: Long,
-    val uri: Uri
-)
-
-data class Service(
+// Modelos de Dados
+data class Station(
     val name: String,
-    val url: String,
-    val screenKey: String
-)
-
-private val services = listOf(
-    Service("Spotify", "https://open.spotify.com", "spotify"),
-    Service("YouTube Music", "https://music.youtube.com", "ytmusic"),
-    Service("Apple Music", "https://music.apple.com", "apple"),
-    Service("Deezer", "https://www.deezer.com", "deezer"),
-    Service("Amazon Music", "https://music.amazon.com", "amazon"),
-    Service("YouTube", "https://m.youtube.com", "youtube")
+    val streamUrl: String,
+    val favicon: String,
+    val genre: String
 )
 
 class MainActivity : ComponentActivity() {
-
-    private val audioPermission: String
-        get() = if (Build.VERSION.SDK_INT >= 33) {
-            Manifest.permission.READ_MEDIA_AUDIO
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-
-    private val permissionRequest =
-        registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { granted ->
-            Toast.makeText(
-                this,
-                if (granted) "Permissão autorizada." else "Permissão necessária.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
+    private var mediaPlayer: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            WebView.setWebContentsDebuggingEnabled(true)
-        }
-
-        window.statusBarColor = android.graphics.Color.rgb(8, 9, 12)
-        window.navigationBarColor = android.graphics.Color.rgb(8, 9, 12)
-
         setContent {
-            MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = Amber,
-                    secondary = Amber,
-                    background = Black,
-                    surface = Panel,
-                    onBackground = White,
-                    onSurface = White
+            GivaroTheme {
+                GivaroApp(
+                    onPlayStream = { url -> playAudio(url) },
+                    onPauseStream = { pauseAudio() },
+                    onResumeStream = { resumeAudio() }
                 )
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Black
-                ) {
-                    var showSplash by remember { mutableStateOf(true) }
-
-                    LaunchedEffect(Unit) {
-                        delay(1800)
-                        showSplash = false
-                    }
-
-                    if (showSplash) {
-                        SplashScreen()
-                    } else {
-                        GivaroScreen(
-                            hasPermission = {
-                                ContextCompat.checkSelfPermission(
-                                    this,
-                                    audioPermission
-                                ) == PackageManager.PERMISSION_GRANTED
-                            },
-                            requestPermission = {
-                                permissionRequest.launch(audioPermission)
-                            }
-                        )
-                    }
-                }
             }
         }
+    }
+
+    private fun playAudio(url: String) {
+        try {
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(url)
+                prepareAsync()
+                setOnPreparedListener { start() }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun pauseAudio() {
+        mediaPlayer?.let {
+            if (it.isPlaying) it.pause()
+        }
+    }
+
+    private fun resumeAudio() {
+        mediaPlayer?.let {
+            if (!it.isPlaying) it.start()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 }
 
+// Tema Minimalista Escuro
 @Composable
-private fun SplashScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF30200E),
-                        Black,
-                        Black
-                    )
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Amber),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "G",
-                    color = Black,
-                    fontSize = 58.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            Text(
-                "GIVARO",
-                color = White,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 6.sp
-            )
-
-            Spacer(Modifier.height(6.dp))
-
-            Text(
-                "AUDIO HUB",
-                color = Amber,
-                fontSize = 11.sp,
-                letterSpacing = 3.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProfessionalEqIcon(
-    modifier: Modifier = Modifier,
-    color: Color = Amber
-) {
-    Canvas(modifier = modifier) {
-        val width = size.width
-        val height = size.height
-
-        val strokeWidth = width * 0.1f
-        val knobRadius = width * 0.12f
-
-        val spacing = width / 4f
-        val startX = spacing / 2f
-
-        val knobs = listOf(0.3f, 0.7f, 0.4f, 0.8f)
-
-        knobs.forEachIndexed { index, knobRatio ->
-            val x = startX + index * spacing
-            val knobY = height * knobRatio
-
-            drawLine(
-                color = color.copy(alpha = 0.4f),
-                start = Offset(x, height * 0.15f),
-                end = Offset(x, height * 0.85f),
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Round
-            )
-
-            drawCircle(
-                color = color,
-                radius = knobRadius,
-                center = Offset(x, knobY)
-            )
-        }
-    }
-}
-
-@Composable
-private fun GivaroScreen(
-    hasPermission: () -> Boolean,
-    requestPermission: () -> Unit
-) {
-    val context = LocalContext.current
-    val tracks = remember { mutableStateListOf<Track>() }
-
-    var selected by remember { mutableIntStateOf(0) }
-    var playing by remember { mutableStateOf(false) }
-    var shuffle by remember { mutableStateOf(false) }
-    var repeat by remember { mutableStateOf(false) }
-    var volume by remember { mutableFloatStateOf(0.8f) }
-    var position by remember { mutableFloatStateOf(0f) }
-    var duration by remember { mutableIntStateOf(0) }
-    var screen by remember { mutableStateOf("player") }
-    var selectedServiceKey by remember { mutableStateOf<String?>(null) }
-    var player by remember { mutableStateOf<MediaPlayer?>(null) }
-    var loadKey by remember { mutableIntStateOf(0) }
-    var isFavorite by remember { mutableStateOf(false) }
-
-    val track = tracks.getOrNull(selected)
-    val selectedService = services.find { it.screenKey == selectedServiceKey }
-
-    fun refreshTracks() {
-        if (!hasPermission()) {
-            requestPermission()
-            return
-        }
-
-        tracks.clear()
-
-        val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Audio.Media._ID,
-            MediaStore.Audio.Media.TITLE,
-            MediaStore.Audio.Media.ARTIST,
-            MediaStore.Audio.Media.DURATION
-        )
-
-        try {
-            context.contentResolver.query(
-                collection,
-                projection,
-                "${MediaStore.Audio.Media.IS_MUSIC} != 0",
-                null,
-                "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
-            )?.use { cursor ->
-
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-
-                while (cursor.moveToNext()) {
-                    val title = cursor.getString(titleCol) ?: "Faixa sem título"
-                    val id = cursor.getLong(idCol)
-
-                    tracks.add(
-                        Track(
-                            id = id,
-                            title = title,
-                            artist = cursor.getString(artistCol)
-                                ?.takeIf { it.isNotBlank() && it != "<unknown>" }
-                                ?: "Artista desconhecido",
-                            duration = cursor.getLong(durationCol),
-                            uri = ContentUris.withAppendedId(collection, id)
-                        )
-                    )
-                }
-            }
-
-            selected = selected.coerceIn(0, (tracks.size - 1).coerceAtLeast(0))
-            loadKey++
-
-            Toast.makeText(
-                context,
-                "${tracks.size} músicas encontradas",
-                Toast.LENGTH_SHORT
-            ).show()
-
-        } catch (_: Exception) {
-            Toast.makeText(context, "Erro ao carregar músicas.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            try {
-                player?.release()
-            } catch (_: Exception) {
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        if (hasPermission()) refreshTracks()
-    }
-
-    LaunchedEffect(selected, loadKey) {
-        val current = tracks.getOrNull(selected)
-
-        if (current == null) {
-            playing = false
-            position = 0f
-            duration = 0
-            return@LaunchedEffect
-        }
-
-        try {
-            player?.release()
-
-            val mp = MediaPlayer()
-            player = mp
-            mp.setDataSource(context, current.uri)
-
-            mp.setOnPreparedListener { ready ->
-                duration = ready.duration
-                ready.setVolume(volume, volume)
-                if (playing) ready.start()
-            }
-
-            mp.setOnCompletionListener {
-                if (repeat) {
-                    it.seekTo(0)
-                    it.start()
-                } else if (tracks.isNotEmpty()) {
-                    selected = if (shuffle && tracks.size > 1) {
-                        tracks.indices.filter { index -> index != selected }.random()
-                    } else {
-                        (selected + 1) % tracks.size
-                    }
-                    playing = true
-                }
-            }
-
-            mp.prepareAsync()
-
-        } catch (_: Exception) {
-            playing = false
-            Toast.makeText(context, "Não foi possível reproduzir.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    LaunchedEffect(playing) {
-        try {
-            val mp = player
-            if (mp != null) {
-                if (playing && !mp.isPlaying) mp.start()
-                else if (!playing && mp.isPlaying) mp.pause()
-            }
-        } catch (_: Exception) {
-        }
-    }
-
-    LaunchedEffect(playing, selected) {
-        while (playing) {
-            try {
-                player?.let {
-                    if (it.isPlaying) {
-                        position = it.currentPosition.toFloat()
-                        duration = it.duration
-                    }
-                }
-            } catch (_: Exception) {
-            }
-            delay(400)
-        }
-    }
-
-    LaunchedEffect(volume) {
-        try {
-            player?.setVolume(volume, volume)
-        } catch (_: Exception) {
-        }
-    }
-
-    fun next() {
-        if (tracks.isEmpty()) {
-            refreshTracks()
-            return
-        }
-
-        selected = if (shuffle && tracks.size > 1) {
-            tracks.indices.filter { it != selected }.random()
-        } else {
-            (selected + 1) % tracks.size
-        }
-        playing = true
-    }
-
-    fun previous() {
-        if (tracks.isEmpty()) return
-
-        try {
-            if ((player?.currentPosition ?: 0) > 3000) {
-                player?.seekTo(0)
-                position = 0f
-            } else {
-                selected = if (selected > 0) selected - 1 else tracks.lastIndex
-                playing = true
-            }
-        } catch (_: Exception) {
-            selected = if (selected > 0) selected - 1 else tracks.lastIndex
-            playing = true
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Black)
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Amber),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("G", color = Black, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                }
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    "GIVARO",
-                    color = White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 3.sp
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clickable { screen = "equalizer" },
-                    contentAlignment = Alignment.Center
-                ) {
-                    ProfessionalEqIcon(
-                        modifier = Modifier.size(20.dp),
-                        color = Amber
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "⋮",
-                    color = White,
-                    fontSize = 24.sp,
-                    modifier = Modifier
-                        .clickable { screen = "menu" }
-                        .padding(4.dp)
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        ) {
-            when {
-                selectedService != null -> {
-                    StreamingWebViewScreen(
-                        service = selectedService,
-                        onBack = { selectedServiceKey = null }
-                    )
-                }
-
-                screen == "player" -> {
-                    PlayerScreen(
-                        track = track,
-                        playing = playing,
-                        shuffle = shuffle,
-                        repeat = repeat,
-                        favorite = isFavorite,
-                        position = position,
-                        duration = duration,
-                        volume = volume,
-                        onPlay = { playing = !playing },
-                        onNext = { next() },
-                        onPrevious = { previous() },
-                        onShuffle = { shuffle = !shuffle },
-                        onRepeat = { repeat = !repeat },
-                        onFavorite = { isFavorite = !isFavorite },
-                        onSeek = {
-                            try {
-                                player?.seekTo(it.toInt())
-                                position = it
-                            } catch (_: Exception) {
-                            }
-                        },
-                        onVolume = { volume = it },
-                        onService = { selectedServiceKey = it }
-                    )
-                }
-
-                screen == "library" -> {
-                    LibraryScreen(
-                        tracks = tracks,
-                        selected = selected,
-                        onSelect = {
-                            selected = it
-                            playing = true
-                            screen = "player"
-                        },
-                        onRefresh = { refreshTracks() }
-                    )
-                }
-
-                screen == "equalizer" -> {
-                    EqualizerScreen()
-                }
-
-                screen == "menu" -> {
-                    MenuScreen(
-                        onNavigate = { screen = it },
-                        onRefresh = { refreshTracks() }
-                    )
-                }
-
-                screen == "settings" -> {
-                    SettingsScreen()
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        NavigationBar(
-            screen = screen,
-            onNavigate = {
-                selectedServiceKey = null
-                screen = it
-            }
-        )
-    }
-}
-
-@Composable
-private fun PlayerScreen(
-    track: Track?,
-    playing: Boolean,
-    shuffle: Boolean,
-    repeat: Boolean,
-    favorite: Boolean,
-    position: Float,
-    duration: Int,
-    volume: Float,
-    onPlay: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onShuffle: () -> Unit,
-    onRepeat: () -> Unit,
-    onFavorite: () -> Unit,
-    onSeek: (Float) -> Unit,
-    onVolume: (Float) -> Unit,
-    onService: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.height(4.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .aspectRatio(1.3f)
-                .clip(RoundedCornerShape(22.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            Color(0xFF221A12),
-                            Panel,
-                            Color(0xFF15120E)
-                        )
-                    )
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("G", color = Amber, fontSize = 75.sp, fontWeight = FontWeight.Black)
-                Text("G I V A R O", color = White, fontSize = 12.sp, letterSpacing = 4.sp)
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    track?.title ?: "Nenhuma música selecionada",
-                    color = White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    track?.artist ?: "Sua biblioteca está esperando",
-                    color = Muted,
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Text(
-                if (favorite) "♥" else "♡",
-                color = if (favorite) Amber else White,
-                fontSize = 24.sp,
-                modifier = Modifier
-                    .clickable { onFavorite() }
-                    .padding(4.dp)
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Slider(
-            value = position.coerceIn(0f, duration.coerceAtLeast(1).toFloat()),
-            onValueChange = onSeek,
-            valueRange = 0f..duration.coerceAtLeast(1).toFloat(),
-            colors = SliderDefaults.colors(
-                thumbColor = Amber,
-                activeTrackColor = Amber,
-                inactiveTrackColor = Panel
-            ),
-            modifier = Modifier.height(20.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(timeText(position.toInt()), color = Muted, fontSize = 11.sp)
-            Text(timeText(duration), color = Muted, fontSize = 11.sp)
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ControlText("⇄", shuffle, onShuffle)
-            ControlText("⏮", false, onPrevious)
-
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(Amber)
-                    .clickable { onPlay() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    if (playing) "⏸" else "▶",
-                    color = Black,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            ControlText("⏭", false, onNext)
-            ControlText("↻", repeat, onRepeat)
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("🔈", color = Muted, fontSize = 14.sp)
-            Slider(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-                    .height(20.dp),
-                value = volume,
-                onValueChange = onVolume,
-                colors = SliderDefaults.colors(
-                    thumbColor = Amber,
-                    activeTrackColor = Amber,
-                    inactiveTrackColor = Panel
-                )
-            )
-            Text("🔊", color = Muted, fontSize = 14.sp)
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            "SERVIÇOS DE MÚSICA",
-            color = Muted,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
-            modifier = Modifier.align(Alignment.Start)
-        )
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            services.forEach { service ->
-                StreamingCard(
-                    service = service,
-                    onClick = { onService(service.screenKey) }
-                )
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun ControlText(
-    symbol: String,
-    active: Boolean,
-    onClick: () -> Unit
-) {
-    Text(
-        symbol,
-        color = if (active) Amber else White,
-        fontSize = 20.sp,
-        modifier = Modifier
-            .clickable { onClick() }
-            .padding(8.dp)
+fun GivaroTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            background = Color(0xFF121212),
+            surface = Color(0xFF1E1E1E),
+            primary = Color(0xFFFFB74D), // Tom dourado suave dos controlos
+            onBackground = Color.White,
+            onSurface = Color.White
+        ),
+        content = content
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StreamingCard(
-    service: Service,
-    onClick: () -> Unit
+fun GivaroApp(
+    onPlayStream: (String) -> Unit,
+    onPauseStream: () -> Unit,
+    onResumeStream: () -> Unit
 ) {
-    val symbol = when (service.screenKey) {
-        "spotify" -> "🎧"
-        "apple" -> "🍎"
-        "deezer" -> "🎵"
-        "amazon" -> "📦"
-        "ytmusic" -> "▶"
-        else -> "📺"
-    }
+    var selectedTab by remember { mutableStateOf(0) }
+    var currentStation by remember { mutableStateOf<Station?>(null) }
+    var isPlaying by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .width(105.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Panel)
-            .clickable { onClick() }
-            .padding(12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(symbol, fontSize = 22.sp)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                service.name,
-                color = White,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-private fun LibraryScreen(
-    tracks: List<Track>,
-    selected: Int,
-    onSelect: (Int) -> Unit,
-    onRefresh: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Biblioteca", color = White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Text(
-                "↻",
-                color = Amber,
-                fontSize = 22.sp,
-                modifier = Modifier
-                    .clickable { onRefresh() }
-                    .padding(4.dp)
-            )
-        }
-
-        Text("${tracks.size} músicas encontradas", color = Muted, fontSize = 12.sp)
-
-        Spacer(Modifier.height(12.dp))
-
-        if (tracks.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "Nenhuma música encontrada.\nToque em atualizar para procurar arquivos.",
-                    color = Muted,
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                itemsIndexed(tracks) { index, item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (index == selected) Color(0xFF221A12) else Panel)
-                            .clickable { onSelect(index) }
-                            .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Black),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("♫", color = Amber, fontSize = 18.sp)
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 12.dp)
-                        ) {
-                            Text(
-                                item.title,
-                                color = if (index == selected) Amber else White,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                item.artist,
-                                color = Muted,
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text(
-                            timeText(item.duration.toInt()),
-                            color = Muted,
-                            fontSize = 11.sp
+                            text = "GIVARO",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 3.sp,
+                            color = Color(0xFFFFB74D)
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF121212))
+            )
+        },
+        bottomBar = {
+            NavigationBar(containerColor = Color(0xFF181818)) {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Início") },
+                    label = { Text("Início") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Search, contentDescription = "Streaming") },
+                    label = { Text("Streaming") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Biblioteca") },
+                    label = { Text("Biblioteca") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "EQ") },
+                    label = { Text("EQ") }
+                )
+            }
+        },
+        containerColor = Color(0xFF121212)
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (selectedTab) {
+                0, 2, 3 -> MainPlayerScreen(
+                    currentStation = currentStation,
+                    isPlaying = isPlaying,
+                    onPlayToggle = {
+                        if (isPlaying) {
+                            onPauseStream()
+                            isPlaying = false
+                        } else {
+                            currentStation?.let {
+                                onResumeStream()
+                                isPlaying = true
+                            }
+                        }
+                    }
+                )
+                1 -> StreamingSearchScreen(
+                    onStationSelected = { station ->
+                        currentStation = station
+                        isPlaying = true
+                        onPlayStream(station.streamUrl)
+                        selectedTab = 0 // Volta para o player principal ao selecionar
+                    }
+                )
             }
         }
     }
 }
 
+// 1. Tela do Player Principal (Com a Capa 1:1 e Design Minimalista)
 @Composable
-private fun EqualizerScreen() {
-    var enabled by remember { mutableStateOf(true) }
-    val bands = remember { mutableStateListOf(0f, 0f, 0f, 0f, 0f) }
-    val names = listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")
+fun MainPlayerScreen(
+    currentStation: Station?,
+    isPlaying: Boolean,
+    onPlayToggle: () -> Unit
+) {
+    var progress by remember { mutableFloatStateOf(0.3f) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text("Equalizador", color = White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // Capa em Destaque 1:1 (Portada)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFF282828)),
+            contentAlignment = Alignment.Center
         ) {
-            Text("Ativar Equalizador", color = White, fontSize = 14.sp)
-            Switch(
-                checked = enabled,
-                onCheckedChange = { enabled = it },
-                colors = SwitchDefaults.colors(checkedThumbColor = Amber, checkedTrackColor = Panel)
+            if (currentStation?.favicon.orEmpty().isNotEmpty()) {
+                AsyncImage(
+                    model = currentStation?.favicon,
+                    contentDescription = "Portada",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = Color.Gray
+                )
+            }
+        }
+
+        // Título e Artista/Estação
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = currentStation?.name ?: "Selecione uma faixa",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = currentStation?.genre ?: "Givaro Audio Hub",
+                fontSize = 14.sp,
+                color = Color.Gray
             )
         }
 
-        Spacer(Modifier.height(20.dp))
+        // Barra de Progresso
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Slider(
+                value = progress,
+                onValueChange = { progress = it },
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(0xFFFFB74D),
+                    activeTrackColor = Color(0xFFFFB74D),
+                    inactiveTrackColor = Color(0xFF333333)
+                )
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("0:45", fontSize = 12.sp, color = Color.Gray)
+                Text("3:30", fontSize = 12.sp, color = Color.Gray)
+            }
+        }
 
+        // Controles Principais
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            bands.forEachIndexed { index, value ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "${value.toInt()}dB",
-                        color = Amber,
-                        fontSize = 10.sp
+            IconButton(onClick = { }) {
+                Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior", tint = Color.White, modifier = Modifier.size(36.dp))
+            }
+            IconButton(
+                onClick = onPlayToggle,
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(Color(0xFFFFB74D), RoundedCornerShape(32.dp))
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = "Play/Pause",
+                    tint = Color.Black,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+            IconButton(onClick = { }) {
+                Icon(Icons.Default.SkipNext, contentDescription = "Próxima", tint = Color.White, modifier = Modifier.size(36.dp))
+            }
+        }
+    }
+}
+
+// 2. Aba Streaming (Buscador Direto)
+@Composable
+fun StreamingSearchScreen(onStationSelected: (Station) -> Unit) {
+    var searchQuery by remember { mutableStateOf("") }
+    var stations by remember { mutableStateOf<List<Station>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Função de Busca na API do Radio Browser
+    fun searchRadio(query: String) {
+        if (query.isBlank()) return
+        isLoading = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                val encodedQuery = URLEncoder.encode(query, "UTF-8")
+                val url = "https://de1.api.radio-browser.info/json/stations/byname/$encodedQuery"
+                val response = URL(url).readText()
+                val jsonArray = JSONArray(response)
+                val list = mutableListOf<Station>()
+
+                for (i in 0 until minOf(jsonArray.length(), 30)) {
+                    val obj = jsonArray.getJSONObject(i)
+                    list.add(
+                        Station(
+                            name = obj.optString("name", "Desconhecido"),
+                            streamUrl = obj.optString("url_resolved", ""),
+                            favicon = obj.optString("favicon", ""),
+                            genre = obj.optString("tags", "Música Global")
+                        )
                     )
+                }
+                withContext(Dispatchers.Main) {
+                    stations = list
+                    isLoading = false
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) { isLoading = false }
+            }
+        }
+    }
 
-                    Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Campo de Pesquisa Limpo
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Procurar rádio, artista ou estilo...", color = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+            singleLine = true,
+            shape = RoundedCornerShape(24.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFFFFB74D),
+                unfocusedBorderColor = Color(0xFF333333),
+                focusedContainerColor = Color(0xFF1E1E1E),
+                unfocusedContainerColor = Color(0xFF1E1E1E)
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = {
+                keyboardController?.hide()
+                searchRadio(searchQuery)
+            })
+        )
 
-                    Slider(
-                        value = value,
-                        onValueChange = { bands[index] = it },
-                        valueRange = -10f..10f,
-                        enabled = enabled,
-                        colors = SliderDefaults.colors(thumbColor = Amber, activeTrackColor = Amber),
-                        modifier = Modifier
-                            .height(160.dp)
-                            .width(36.dp)
-                    )
+        Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        names[index],
-                        color = Muted,
-                        fontSize = 10.sp
-                    )
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color(0xFFFFB74D))
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(stations) { station ->
+                    StationRowItem(station = station, onClick = { onStationSelected(station) })
                 }
             }
         }
-
-        Spacer(Modifier.height(20.dp))
-
-        Text(
-            "Ajustes visuais integrados no sistema do player.",
-            color = Muted,
-            fontSize = 11.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
 @Composable
-private fun MenuScreen(
-    onNavigate: (String) -> Unit,
-    onRefresh: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text("Menu", color = White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-
-        Spacer(Modifier.height(16.dp))
-
-        MenuRow("♫", "Biblioteca de Músicas") { onNavigate("library") }
-        MenuRow("🎚", "Equalizador de Áudio") { onNavigate("equalizer") }
-        MenuRow("⚙", "Configurações Gerais") { onNavigate("settings") }
-        MenuRow("↻", "Atualizar Lista Local") { onRefresh() }
-        MenuRow("▶", "Voltar ao Reprodutor") { onNavigate("player") }
-    }
-}
-
-@Composable
-private fun SettingsScreen() {
-    var walkman by remember { mutableStateOf(false) }
-    var privateMode by remember { mutableStateOf(false) }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text("Configurações", color = White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Modo Walkman", color = White, fontSize = 14.sp)
-                Text("Interface clássica de reprodução", color = Muted, fontSize = 11.sp)
-            }
-            Switch(
-                checked = walkman,
-                onCheckedChange = { walkman = it },
-                colors = SwitchDefaults.colors(checkedThumbColor = Amber, checkedTrackColor = Panel)
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-        Divider(color = Panel)
-        Spacer(Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Modo Privado", color = White, fontSize = 14.sp)
-                Text("Ocultar histórico de sessões", color = Muted, fontSize = 11.sp)
-            }
-            Switch(
-                checked = privateMode,
-                onCheckedChange = { privateMode = it },
-                colors = SwitchDefaults.colors(checkedThumbColor = Amber, checkedTrackColor = Panel)
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        Text("GIVARO AUDIO HUB", color = Amber, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text("Versão Premium 2.5", color = Muted, fontSize = 11.sp)
-    }
-}
-
-@Composable
-private fun MenuRow(
-    symbol: String,
-    title: String,
-    onClick: () -> Unit
-) {
+fun StationRowItem(station: Station, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1E1E1E))
             .clickable { onClick() }
-            .background(Panel)
-            .padding(14.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(symbol, color = Amber, fontSize = 18.sp)
-        Text(
-            title,
-            color = White,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp)
-        )
-        Text("›", color = Muted, fontSize = 20.sp)
-    }
-
-    Spacer(Modifier.height(8.dp))
-}
-
-@Composable
-private fun NavigationBar(
-    screen: String,
-    onNavigate: (String) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Panel, RoundedCornerShape(16.dp))
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        NavItem("⌂", "Início", screen == "player") { onNavigate("player") }
-        NavItem("♫", "Biblioteca", screen == "library") { onNavigate("library") }
-
-        Column(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .clickable { onNavigate("equalizer") }
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            ProfessionalEqIcon(
-                modifier = Modifier.size(20.dp),
-                color = if (screen == "equalizer") Amber else Muted
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                "EQ",
-                color = if (screen == "equalizer") Amber else Muted,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        NavItem("☰", "Menu", screen == "menu" || screen == "settings") { onNavigate("menu") }
-    }
-}
-
-@Composable
-private fun NavItem(
-    symbol: String,
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            symbol,
-            color = if (active) Amber else Muted,
-            fontSize = 20.sp
-        )
-        Text(
-            label,
-            color = if (active) Amber else Muted,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun StreamingWebViewScreen(
-    service: Service,
-    onBack: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Panel, RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = { onBack() }) {
-                Text("‹ Voltar", color = Amber, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            }
-            Spacer(Modifier.weight(1f))
-            Text(
-                service.name.uppercase(),
-                color = White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
-            )
-            Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(60.dp))
-        }
-
-        Spacer(Modifier.height(8.dp))
-
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Panel)
+                .size(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF282828)),
+            contentAlignment = Alignment.Center
         ) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { context ->
-                    WebView(context).apply {
-                        settings.apply {
-                            javaScriptEnabled = true
-                            domStorageEnabled = true
-                            databaseEnabled = true
-                            loadsImagesAutomatically = true
-                            javaScriptCanOpenWindowsAutomatically = true
-                            setSupportMultipleWindows(true)
-                            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                            cacheMode = WebSettings.LOAD_DEFAULT
-                            mediaPlaybackRequiresUserGesture = false
-                            useWideViewPort = true
-                            loadWithOverviewMode = true
-                            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
-                        }
+            if (station.favicon.isNotEmpty()) {
+                AsyncImage(
+                    model = station.favicon,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(Icons.Default.Radio, contentDescription = null, tint = Color.Gray)
+            }
+        }
 
-                        CookieManager.getInstance().setAcceptCookie(true)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                        }
+        Spacer(modifier = Modifier.width(12.dp))
 
-                        webViewClient = object : WebViewClient() {
-                            override fun onReceivedSslError(
-                                view: WebView?,
-                                handler: SslErrorHandler?,
-                                error: android.net.http.SslError?
-                            ) {
-                                handler?.proceed()
-                            }
-                        }
-
-                        loadUrl(service.url)
-                    }
-                }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = station.name,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = station.genre,
+                fontSize = 12.sp,
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
-    }
-}
 
-private fun timeText(milliseconds: Int): String {
-    val totalSeconds = (milliseconds / 1000).coerceAtLeast(0)
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%d:%02d", minutes, seconds)
+        Icon(Icons.Default.PlayArrow, contentDescription = "Tocar", tint = Color(0xFFFFB74D))
+    }
 }
