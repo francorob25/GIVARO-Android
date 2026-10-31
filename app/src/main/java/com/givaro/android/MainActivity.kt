@@ -224,7 +224,7 @@ fun MainPlayerScreen(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Default.Audiotrack,
+                    imageVector = Icons.Default.Star,
                     contentDescription = null,
                     modifier = Modifier.size(80.dp),
                     tint = Color.Gray
@@ -405,7 +405,7 @@ fun StationRowItem(station: Station, onClick: () -> Unit) {
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Icon(Icons.Default.Audiotrack, contentDescription = null, tint = Color.Gray)
+                Icon(Icons.Default.Star, contentDescription = null, tint = Color.Gray)
             }
         }
 
@@ -431,4 +431,3 @@ fun StationRowItem(station: Station, onClick: () -> Unit) {
         Icon(Icons.Default.PlayArrow, contentDescription = "Tocar", tint = Color(0xFFFFB74D))
     }
 }
-
