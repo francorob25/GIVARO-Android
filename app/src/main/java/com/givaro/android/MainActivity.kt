@@ -192,7 +192,6 @@ fun GivaroApp(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPlayerScreen(
     currentStation: Station?,
@@ -253,12 +252,7 @@ fun MainPlayerScreen(
         Column(modifier = Modifier.fillMaxWidth()) {
             Slider(
                 value = progress,
-                onValueChange = { progress = it },
-                colors = SliderDefaults.colors(
-                    thumbColor = Color(0xFFFFB74D),
-                    activeTrackColor = Color(0xFFFFB74D),
-                    inactiveTrackColor = Color(0xFF333333)
-                )
+                onValueChange = { progress = it }
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
