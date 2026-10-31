@@ -5,8 +5,8 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-
 dependencyResolutionManagement {
+    // Força o uso centralizado de repositórios
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GIVARO"
+rootProject.name = "GIVARO-Android"
 include(":app")
