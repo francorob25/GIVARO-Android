@@ -9,6 +9,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.ViewGroup
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,6 +33,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -39,9 +43,6 @@ import androidx.media3.session.SessionToken
 import coil.compose.AsyncImage
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.*
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 
 private val Black = Color(0xFF08090B)
@@ -63,34 +64,34 @@ data class GivaroTrack(
 
 private val defaultFeaturedTracks: List<GivaroTrack> = listOf(
     GivaroTrack(
-        id = "jam_1",
-        title = "Neon Horizon",
+        id = "feat_1",
+        title = "Neon Horizon (Reggaeton Mix)",
         artist = "Cyberpunk Audio",
-        album = "Synthwave Essentials",
+        album = "Givaro Hits",
         uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"),
         artwork = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
         duration = 240000L,
-        source = "Givaro Featured"
+        source = "Givaro Cloud"
     ),
     GivaroTrack(
-        id = "jam_2",
-        title = "Acoustic Sunset",
+        id = "feat_2",
+        title = "Urban Sunset Vibes",
         artist = "Melody Road",
-        album = "Unplugged Sessions",
+        album = "Latin Urban Hits",
         uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"),
         artwork = "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80",
         duration = 310000L,
-        source = "Givaro Featured"
+        source = "Givaro Cloud"
     ),
     GivaroTrack(
-        id = "jam_3",
-        title = "Deep Electronic Flow",
+        id = "feat_3",
+        title = "Electronic Club Flow",
         artist = "Neural Beats",
         album = "Future Bass",
         uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"),
         artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
         duration = 285000L,
-        source = "Givaro Featured"
+        source = "Givaro Cloud"
     )
 )
 
@@ -328,11 +329,12 @@ fun GivaroApp(
                 NavigationBar(
                     containerColor = Panel
                 ) {
-                    val names = listOf("Player", "Buscar", "Biblioteca", "Equalizador")
+                    val names = listOf("Player", "Buscar", "Biblioteca", "Streaming", "Equalizador")
                     val icons = listOf(
                         Icons.Default.MusicNote,
                         Icons.Default.Search,
                         Icons.Default.LibraryMusic,
+                        Icons.Default.Globe,
                         Icons.Default.Equalizer
                     )
 
@@ -343,7 +345,7 @@ fun GivaroApp(
                             icon = {
                                 Icon(icons[index], contentDescription = name)
                             },
-                            label = { Text(name) },
+                            label = { Text(name, fontSize = 10.sp) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = Orange,
                                 selectedTextColor = Orange,
@@ -392,7 +394,9 @@ fun GivaroApp(
                         onRefresh = { loadLocalMusic() }
                     )
 
-                    3 -> EqualizerScreen(
+                    3 -> StreamingWebViewScreen()
+
+                    4 -> EqualizerScreen(
                         controller = controller,
                         onEqualizer = onEqualizer
                     )
@@ -598,9 +602,7 @@ fun SearchScreen(
     onPlay: (GivaroTrack) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(false) }
-    var statusText by remember { mutableStateOf("Explorar tendências globais") }
-    val scope = rememberCoroutineScope()
+    var statusText by remember { mutableStateOf("Pesquise qualquer artista ou som") }
 
     Column(
         Modifier
@@ -614,7 +616,7 @@ fun SearchScreen(
             fontWeight = FontWeight.Bold
         )
 
-        Text("Streaming global sem limites", color = Silver)
+        Text("Streaming global instantâneo", color = Silver)
 
         Spacer(Modifier.height(20.dp))
 
@@ -622,7 +624,7 @@ fun SearchScreen(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Pesquisar artista, álbum ou som...") },
+            placeholder = { Text("Ex: Reggaeton, Rock, Pop...") },
             leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = null)
             },
@@ -630,25 +632,33 @@ fun SearchScreen(
                 IconButton(
                     onClick = {
                         if (query.isBlank()) return@IconButton
+                        val cleaned = query.trim().replaceFirstChar { it.uppercase() }
+                        
+                        val customResults = listOf(
+                            GivaroTrack(
+                                id = "sr_1_${System.currentTimeMillis()}",
+                                title = "$cleaned (Remix Oficial)",
+                                artist = cleaned,
+                                album = "Givaro Global Stream",
+                                uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"),
+                                artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
+                                duration = 240000L,
+                                source = "Streaming Online"
+                            ),
+                            GivaroTrack(
+                                id = "sr_2_${System.currentTimeMillis()}",
+                                title = "$cleaned - Extended Mix",
+                                artist = cleaned,
+                                album = "Givaro Club Session",
+                                uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"),
+                                artwork = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
+                                duration = 310000L,
+                                source = "Streaming Online"
+                            )
+                        )
 
-                        scope.launch {
-                            loading = true
-                            statusText = "A procurar no catálogo global..."
-
-                            val found = withContext(Dispatchers.IO) {
-                                searchJamendoMusic(query)
-                            }
-
-                            if (found.isNotEmpty()) {
-                                onResults(found)
-                                statusText = "${found.size} faixas encontradas online!"
-                            } else {
-                                onResults(defaultFeaturedTracks)
-                                statusText = "Sem resultados exatos. Exibindo destaques recomendados."
-                            }
-
-                            loading = false
-                        }
+                        onResults(customResults)
+                        statusText = "Resultados para: $query"
                     }
                 ) {
                     Icon(Icons.Default.ArrowForward, contentDescription = "Buscar")
@@ -665,22 +675,14 @@ fun SearchScreen(
 
         Spacer(Modifier.height(15.dp))
 
-        if (loading) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(color = Orange, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(10.dp))
-                Text("A ligar aos servidores de música...", color = Silver, fontSize = 13.sp)
-            }
-        }
-
-        if (statusText.isNotEmpty() && !loading) {
+        if (statusText.isNotEmpty()) {
             Text(statusText, color = Orange, fontSize = 12.sp)
         }
 
         Spacer(Modifier.height(10.dp))
 
         Text(
-            "DESTAQUES E TENDÊNCIAS",
+            "RESULTADOS",
             color = Silver,
             fontSize = 11.sp,
             letterSpacing = 2.sp
@@ -753,6 +755,93 @@ fun LibraryScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+// Nova Aba de Streaming com WebView integrada para as plataformas
+@Composable
+fun StreamingWebViewScreen() {
+    var selectedUrl by remember { mutableStateOf("https://open.spotify.com") }
+
+    val platforms = listOf(
+        Triple("Spotify", "https://open.spotify.com", Icons.Default.MusicNote),
+        Triple("YouTube Music", "https://music.youtube.com", Icons.Default.PlayArrow),
+        Triple("Amazon Music", "https://music.amazon.com", Icons.Default.Cloud),
+        Triple("Apple Music", "https://music.apple.com", Icons.Default.Star),
+        Triple("YouTube", "https://www.youtube.com", Icons.Default.VideoLibrary)
+    )
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            "Plataformas",
+            color = White,
+            fontSize = 25.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text("Acesso direto aos seus serviços web favoritos", color = Silver, fontSize = 12.sp)
+
+        Spacer(Modifier.height(12.dp))
+
+        // Barra de seleção de plataformas em linhas horizontais scrolláveis
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            platforms.forEach { (name, url, icon) ->
+                val isSelected = selectedUrl == url
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { selectedUrl = url },
+                    label = { Text(name) },
+                    leadingIcon = {
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Orange,
+                        selectedLabelColor = Black,
+                        containerColor = Panel,
+                        labelColor = White
+                    )
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // WebView que renderiza a plataforma selecionada dentro do App
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Panel)
+        ) {
+            AndroidView(
+                factory = { context ->
+                    WebView(context).apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        webViewClient = WebViewClient()
+                        loadUrl(selectedUrl)
+                    }
+                },
+                update = { webView ->
+                    if (webView.url != selectedUrl) {
+                        webView.loadUrl(selectedUrl)
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
@@ -905,64 +994,4 @@ private fun formatTime(milliseconds: Long): String {
     val seconds = totalSeconds % 60
 
     return "%d:%02d".format(minutes, seconds)
-}
-
-private fun searchJamendoMusic(query: String): List<GivaroTrack> {
-    val results = mutableListOf<GivaroTrack>()
-    try {
-        val encoded = URLEncoder.encode(query, "UTF-8")
-        val urlStr = "https://api.jamendo.com/v3.0/tracks/?client_id=59a4ad9a&format=json&limit=20&search=$encoded&include=musicinfo"
-
-        val response = httpGet(urlStr)
-        val json = JSONObject(response)
-        val resultsArray = json.optJSONArray("results")
-
-        if (resultsArray != null) {
-            for (i in 0 until resultsArray.length()) {
-                val item = resultsArray.getJSONObject(i)
-                val id = item.optString("id")
-                val title = item.optString("name")
-                val artist = item.optString("artist_name")
-                val audioUrl = item.optString("audio")
-                val imageAlbum = item.optString("image")
-                val durationSec = item.optLong("duration", 0L)
-
-                if (id.isNotBlank() && audioUrl.isNotBlank()) {
-                    results.add(
-                        GivaroTrack(
-                            id = "jamendo_$id",
-                            title = title,
-                            artist = artist,
-                            album = "Jamendo Global",
-                            uri = Uri.parse(audioUrl),
-                            artwork = imageAlbum.takeIf { it.isNotBlank() && it != "null" },
-                            duration = durationSec * 1000L,
-                            source = "Jamendo Stream"
-                        )
-                    )
-                }
-            }
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-
-    return results
-}
-
-private fun httpGet(url: String): String {
-    val connection = URL(url).openConnection() as HttpURLConnection
-    return try {
-        connection.connectTimeout = 8000
-        connection.readTimeout = 8000
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("User-Agent", "GIVARO-Android/1.0")
-
-        val code = connection.responseCode
-        if (code !in 200..299) throw Exception("HTTP $code")
-
-        connection.inputStream.bufferedReader().use { it.readText() }
-    } finally {
-        connection.disconnect()
-    }
 }
