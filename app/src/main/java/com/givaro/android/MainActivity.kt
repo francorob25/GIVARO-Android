@@ -25,7 +25,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -63,33 +62,118 @@ data class GivaroTrack(
     val uri: Uri,
     val artwork: String? = null,
     val duration: Long = 0L,
-    val source: String = "Givaro Cloud"
+    val source: String = "Givaro Commercial Cloud"
 )
 
-// Repositório Comercial Global embutido no app com dezenas de músicas de sucesso
-private val massiveCommercialDatabase: List<GivaroTrack> = listOf(
-    // Reggaeton & Latino
-    GivaroTrack("m_1", "Gasolina", "Daddy Yankee", "Barrio Fino", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"), "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80", 252000L, "Repositório Comercial"),
-    GivaroTrack("m_2", "Despacito", "Luis Fonsi ft. Daddy Yankee", "Vida", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"), "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80", 228000L, "Repositório Comercial"),
-    GivaroTrack("m_3", "Con Calma", "Daddy Yankee ft. Snow", "Con Calma EP", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"), "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&auto=format&fit=crop&q=80", 182000L, "Repositório Comercial"),
-    GivaroTrack("m_4", "Dura", "Daddy Yankee", "Dura Single", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"), "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80", 200000L, "Repositório Comercial"),
-    GivaroTrack("m_5", "Taki Taki", "DJ Snake ft. Selena Gomez, Ozuna", "Carte Blanche", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"), "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80", 212000L, "Repositório Comercial"),
-    GivaroTrack("m_6", "Mi Gente", "J Balvin, Willy William", "Vibras", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"), "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80", 185000L, "Repositório Comercial"),
+// Repositório Comercial Global Gigante Integrado
+private val givaroCommercialRepository: List<GivaroTrack> = listOf(
+    // --- Daddy Yankee & Reggaeton Hits ---
+    GivaroTrack(
+        id = "civ_1",
+        title = "Gasolina",
+        artist = "Daddy Yankee",
+        album = "Barrio Fino",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"),
+        artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
+        duration = 252000L,
+        source = "Givaro Commercial"
+    ),
+    GivaroTrack(
+        id = "civ_2",
+        title = "Despacito",
+        artist = "Luis Fonsi ft. Daddy Yankee",
+        album = "Vida",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"),
+        artwork = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
+        duration = 228000L,
+        source = "Givaro Commercial"
+    ),
+    GivaroTrack(
+        id = "civ_3",
+        title = "Con Calma",
+        artist = "Daddy Yankee ft. Snow",
+        album = "Con Calma EP",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"),
+        artwork = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&auto=format&fit=crop&q=80",
+        duration = 182000L,
+        source = "Givaro Commercial"
+    ),
+    GivaroTrack(
+        id = "civ_4",
+        title = "Dura",
+        artist = "Daddy Yankee",
+        album = "Single",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"),
+        artwork = "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80",
+        duration = 200000L,
+        source = "Givaro Commercial"
+    ),
 
-    // Pop Global
-    GivaroTrack("m_7", "Shape of You", "Ed Sheeran", "Divide", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"), "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&auto=format&fit=crop&q=80", 263000L, "Repositório Comercial"),
-    GivaroTrack("m_8", "Blinding Lights", "The Weeknd", "After Hours", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"), "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80", 200000L, "Repositório Comercial"),
-    GivaroTrack("m_9", "Levitating", "Dua Lipa", "Future Nostalgia", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"), "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80", 203000L, "Repositório Comercial"),
-    GivaroTrack("m_10", "As It Was", "Harry Styles", "Harry's House", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"), "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80", 167000L, "Repositório Comercial"),
+    // --- Pop Global ---
+    GivaroTrack(
+        id = "civ_5",
+        title = "Shape of You",
+        artist = "Ed Sheeran",
+        album = "Divide",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"),
+        artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
+        duration = 263000L,
+        source = "Givaro Commercial"
+    ),
+    GivaroTrack(
+        id = "civ_6",
+        title = "Blinding Lights",
+        artist = "The Weeknd",
+        album = "After Hours",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"),
+        artwork = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
+        duration = 200000L,
+        source = "Givaro Commercial"
+    ),
+    GivaroTrack(
+        id = "civ_7",
+        title = "As It Was",
+        artist = "Harry Styles",
+        album = "Harry's House",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"),
+        artwork = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&auto=format&fit=crop&q=80",
+        duration = 167000L,
+        source = "Givaro Commercial"
+    ),
 
-    // Eletrónica & Club
-    GivaroTrack("m_11", "Titanium", "David Guetta ft. Sia", "Nothing but the Beat", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"), "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&auto=format&fit=crop&q=80", 245000L, "Repositório Comercial"),
-    GivaroTrack("m_12", "Wake Me Up", "Avicii", "True", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"), "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80", 249000L, "Repositório Comercial"),
-    GivaroTrack("m_13", "The Nights", "Avicii", "The Days / Nights", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"), "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80", 176000L, "Repositório Comercial"),
+    // --- Eletrónica & Club ---
+    GivaroTrack(
+        id = "civ_8",
+        title = "Wake Me Up",
+        artist = "Avicii",
+        album = "True",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"),
+        artwork = "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80",
+        duration = 249000L,
+        source = "Givaro Commercial"
+    ),
+    GivaroTrack(
+        id = "civ_9",
+        title = "Titanium",
+        artist = "David Guetta ft. Sia",
+        album = "Nothing but the Beat",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"),
+        artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
+        duration = 245000L,
+        source = "Givaro Commercial"
+    ),
 
-    // Rock & Alternativo
-    GivaroTrack("m_14", "Believer", "Imagine Dragons", "Evolve", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"), "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80", 204000L, "Repositório Comercial"),
-    GivaroTrack("m_15", "Radioactive", "Imagine Dragons", "Night Visions", Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"), "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&auto=format&fit=crop&q=80", 187000L, "Repositório Comercial")
+    // --- Rock & Alternativo ---
+    GivaroTrack(
+        id = "civ_10",
+        title = "Believer",
+        artist = "Imagine Dragons",
+        album = "Evolve",
+        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"),
+        artwork = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
+        duration = 204000L,
+        source = "Givaro Commercial"
+    )
 )
 
 class MainActivity : ComponentActivity() {
@@ -99,7 +183,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         enableDoNotDisturbMode()
 
         val token = SessionToken(
@@ -123,9 +206,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             GivaroApp(
                 controller = controller,
-                onEqualizer = { sessionId ->
-                    openEqualizer(sessionId)
-                }
+                onEqualizer = { sessionId -> openEqualizer(sessionId) }
             )
         }
     }
@@ -148,9 +229,7 @@ class MainActivity : ComponentActivity() {
     private fun openEqualizer(sessionId: Int) {
         try {
             equalizer?.release()
-            equalizer = Equalizer(0, sessionId).apply {
-                enabled = true
-            }
+            equalizer = Equalizer(0, sessionId).apply { enabled = true }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -171,20 +250,20 @@ fun GivaroApp(
     onEqualizer: (Int) -> Unit
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    var tracks by remember { mutableStateOf<List<GivaroTrack>>(massiveCommercialDatabase) }
+    var tracks by remember { mutableStateOf<List<GivaroTrack>>(givaroCommercialRepository) }
     var favorites by remember { mutableStateOf(setOf<String>()) }
-    var currentTrack by remember { mutableStateOf<GivaroTrack?>(massiveCommercialDatabase.firstOrNull()) }
+    var currentTrack by remember { mutableStateOf<GivaroTrack?>(givaroCommercialRepository.firstOrNull()) }
     var playing by remember { mutableStateOf(false) }
     var position by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
-    var searchResults by remember { mutableStateOf<List<GivaroTrack>>(massiveCommercialDatabase) }
+    var searchResults by remember { mutableStateOf<List<GivaroTrack>>(givaroCommercialRepository) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
     fun playTrack(track: GivaroTrack, list: List<GivaroTrack>) {
         val player = controller ?: return
 
-        tracks = list.ifEmpty { massiveCommercialDatabase }
+        tracks = list.ifEmpty { givaroCommercialRepository }
         currentTrack = track
 
         val items = tracks.map {
@@ -318,11 +397,7 @@ fun GivaroApp(
     }
 
     LaunchedEffect(Unit) {
-        if (ContextCompat.checkSelfPermission(
-                context,
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
             loadLocalMusic()
         } else {
             permissionLauncher.launch(permission)
@@ -340,9 +415,7 @@ fun GivaroApp(
         Scaffold(
             containerColor = Black,
             bottomBar = {
-                NavigationBar(
-                    containerColor = Panel
-                ) {
+                NavigationBar(containerColor = Panel) {
                     val names = listOf("Player", "Buscar", "Biblioteca", "Streaming", "Equalizador")
                     val icons = listOf(
                         Icons.Default.MusicNote,
@@ -361,9 +434,7 @@ fun GivaroApp(
                                 }
                                 tab = index 
                             },
-                            icon = {
-                                Icon(icons[index], contentDescription = name)
-                            },
+                            icon = { Icon(icons[index], contentDescription = name) },
                             label = { Text(name, fontSize = 10.sp) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = Orange,
@@ -377,7 +448,6 @@ fun GivaroApp(
                 }
             }
         ) { padding ->
-
             Box(
                 Modifier
                     .fillMaxSize()
@@ -392,29 +462,21 @@ fun GivaroApp(
                         controller = controller,
                         onOpenLibrary = { tab = 2 }
                     )
-
                     1 -> SearchScreen(
                         results = searchResults,
                         onResults = { searchResults = it },
                         onPlay = { playTrack(it, searchResults) }
                     )
-
                     2 -> LibraryScreen(
                         tracks = tracks,
                         favorites = favorites,
                         onPlay = { playTrack(it, tracks) },
                         onFavorite = {
-                            favorites = if (it.id in favorites) {
-                                favorites - it.id
-                            } else {
-                                favorites + it.id
-                            }
+                            favorites = if (it.id in favorites) favorites - it.id else favorites + it.id
                         },
                         onRefresh = { loadLocalMusic() }
                     )
-
                     3 -> StreamingWebViewScreen(controller = controller)
-
                     4 -> EqualizerScreen(
                         controller = controller,
                         onEqualizer = onEqualizer
@@ -446,26 +508,12 @@ fun PlayerScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(
-                    "GIVARO",
-                    color = Orange,
-                    fontSize = 27.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    "MUSIC EXPERIENCE",
-                    color = Silver,
-                    fontSize = 10.sp,
-                    letterSpacing = 3.sp
-                )
+                Text("GIVARO", color = Orange, fontSize = 27.sp, fontWeight = FontWeight.Black)
+                Text("MUSIC EXPERIENCE", color = Silver, fontSize = 10.sp, letterSpacing = 3.sp)
             }
 
             IconButton(onClick = onOpenLibrary) {
-                Icon(
-                    Icons.Default.LibraryMusic,
-                    contentDescription = "Biblioteca",
-                    tint = Silver
-                )
+                Icon(Icons.Default.LibraryMusic, contentDescription = "Biblioteca", tint = Silver)
             }
         }
 
@@ -478,36 +526,18 @@ fun PlayerScreen(
                 .clip(RoundedCornerShape(28.dp))
                 .background(
                     Brush.linearGradient(
-                        listOf(
-                            Color(0xFF292D34),
-                            Color(0xFF111318),
-                            Color(0xFF3A2419)
-                        )
+                        listOf(Color(0xFF292D34), Color(0xFF111318), Color(0xFF3A2419))
                     ),
                     RoundedCornerShape(28.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
             if (track?.artwork != null) {
-                AsyncImage(
-                    model = track.artwork,
-                    contentDescription = "Capa",
-                    modifier = Modifier.fillMaxSize()
-                )
+                AsyncImage(model = track.artwork, contentDescription = "Capa", modifier = Modifier.fillMaxSize())
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = Orange,
-                        modifier = Modifier.size(100.dp)
-                    )
-                    Text(
-                        "GIVARO",
-                        color = Silver,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Icon(Icons.Default.MusicNote, contentDescription = null, tint = Orange, modifier = Modifier.size(100.dp))
+                    Text("GIVARO", color = Silver, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -532,12 +562,8 @@ fun PlayerScreen(
         Spacer(Modifier.height(25.dp))
 
         Slider(
-            value = if (duration > 0) {
-                position.toFloat().coerceIn(0f, duration.toFloat())
-            } else 0f,
-            onValueChange = {
-                controller?.seekTo(it.toLong())
-            },
+            value = if (duration > 0) position.toFloat().coerceIn(0f, duration.toFloat()) else 0f,
+            onValueChange = { controller?.seekTo(it.toLong()) },
             valueRange = 0f..duration.coerceAtLeast(1L).toFloat(),
             colors = SliderDefaults.colors(
                 thumbColor = Orange,
@@ -561,15 +587,8 @@ fun PlayerScreen(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = {
-                controller?.seekToPreviousMediaItem()
-            }) {
-                Icon(
-                    Icons.Default.SkipPrevious,
-                    contentDescription = "Anterior",
-                    tint = White,
-                    modifier = Modifier.size(38.dp)
-                )
+            IconButton(onClick = { controller?.seekToPreviousMediaItem() }) {
+                Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior", tint = White, modifier = Modifier.size(38.dp))
             }
 
             FilledIconButton(
@@ -578,28 +597,18 @@ fun PlayerScreen(
                     else controller?.play()
                 },
                 modifier = Modifier.size(76.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = Orange
-                )
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Orange)
             ) {
                 Icon(
-                    if (playing) Icons.Default.Pause
-                    else Icons.Default.PlayArrow,
+                    if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = "Reproduzir",
                     tint = Black,
                     modifier = Modifier.size(42.dp)
                 )
             }
 
-            IconButton(onClick = {
-                controller?.seekToNextMediaItem()
-            }) {
-                Icon(
-                    Icons.Default.SkipNext,
-                    contentDescription = "Próxima",
-                    tint = White,
-                    modifier = Modifier.size(38.dp)
-                )
+            IconButton(onClick = { controller?.seekToNextMediaItem() }) {
+                Icon(Icons.Default.SkipNext, contentDescription = "Próxima", tint = White, modifier = Modifier.size(38.dp))
             }
         }
 
@@ -621,21 +630,15 @@ fun SearchScreen(
     onPlay: (GivaroTrack) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    var statusText by remember { mutableStateOf("Catálogo comercial carregado com sucesso") }
+    var statusText by remember { mutableStateOf("Repositório Comercial Ativo") }
 
     Column(
         Modifier
             .fillMaxSize()
             .padding(20.dp)
     ) {
-        Text(
-            "Descobrir",
-            color = White,
-            fontSize = 29.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text("Repositório de Hits Comerciais", color = Silver)
+        Text("Descobrir", color = White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
+        Text("Busca no Repositório Comercial", color = Silver)
 
         Spacer(Modifier.height(20.dp))
 
@@ -644,17 +647,15 @@ fun SearchScreen(
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Ex: Daddy Yankee, Ed Sheeran, Avicii...") },
-            leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = null)
-            },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 IconButton(
                     onClick = {
                         val cleaned = query.trim().lowercase()
                         val filtered = if (cleaned.isBlank()) {
-                            massiveCommercialDatabase
+                            givaroCommercialRepository
                         } else {
-                            massiveCommercialDatabase.filter {
+                            givaroCommercialRepository.filter {
                                 it.artist.lowercase().contains(cleaned) || it.title.lowercase().contains(cleaned)
                             }.ifEmpty {
                                 listOf(
@@ -666,13 +667,13 @@ fun SearchScreen(
                                         uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"),
                                         artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
                                         duration = 240000L,
-                                        source = "Repositório Comercial"
+                                        source = "Givaro Commercial"
                                     )
                                 )
                             }
                         }
                         onResults(filtered)
-                        statusText = "${filtered.size} faixas encontradas"
+                        statusText = "${filtered.size} faixas encontradas para: $query"
                     }
                 ) {
                     Icon(Icons.Default.ArrowForward, contentDescription = "Buscar")
@@ -695,19 +696,11 @@ fun SearchScreen(
 
         Spacer(Modifier.height(10.dp))
 
-        Text(
-            "MÚSICAS DISPONÍVEIS",
-            color = Silver,
-            fontSize = 11.sp,
-            letterSpacing = 2.sp
-        )
+        Text("MÚSICAS DO REPOSITÓRIO", color = Silver, fontSize = 11.sp, letterSpacing = 2.sp)
 
         LazyColumn {
-            items(results.ifEmpty { massiveCommercialDatabase }, key = { it.id }) { track ->
-                TrackRow(
-                    track = track,
-                    onClick = { onPlay(track) }
-                )
+            items(results.ifEmpty { givaroCommercialRepository }, key = { it.id }) { track ->
+                TrackRow(track = track, onClick = { onPlay(track) })
             }
         }
     }
@@ -732,21 +725,12 @@ fun LibraryScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(
-                    "Biblioteca",
-                    color = White,
-                    fontSize = 29.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Biblioteca", color = White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
                 Text("${tracks.size} faixas disponíveis", color = Silver)
             }
 
             IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = "Atualizar",
-                    tint = Orange
-                )
+                Icon(Icons.Default.Refresh, contentDescription = "Atualizar", tint = Orange)
             }
         }
 
@@ -761,8 +745,7 @@ fun LibraryScreen(
 
                     IconButton(onClick = { onFavorite(track) }) {
                         Icon(
-                            if (track.id in favorites) Icons.Default.Favorite
-                            else Icons.Default.FavoriteBorder,
+                            if (track.id in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Favorito",
                             tint = if (track.id in favorites) Orange else Silver
                         )
@@ -794,12 +777,7 @@ fun StreamingWebViewScreen(controller: MediaController?) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            "Streaming",
-            color = White,
-            fontSize = 25.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Text("Streaming", color = White, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Text("Acesso direto aos seus serviços web favoritos", color = Silver, fontSize = 12.sp)
 
         Spacer(Modifier.height(12.dp))
@@ -819,9 +797,7 @@ fun StreamingWebViewScreen(controller: MediaController?) {
                         selectedUrl = url 
                     },
                     label = { Text(name) },
-                    leadingIcon = {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
-                    },
+                    leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Orange,
                         selectedLabelColor = Black,
@@ -843,10 +819,7 @@ fun StreamingWebViewScreen(controller: MediaController?) {
             AndroidView(
                 factory = { context ->
                     WebView(context).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
+                        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         webViewClient = WebViewClient()
@@ -884,49 +857,21 @@ fun TrackRow(
             contentAlignment = Alignment.Center
         ) {
             if (track.artwork != null) {
-                AsyncImage(
-                    model = track.artwork,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize()
-                )
+                AsyncImage(model = track.artwork, contentDescription = null, modifier = Modifier.fillMaxSize())
             } else {
-                Icon(
-                    Icons.Default.MusicNote,
-                    contentDescription = null,
-                    tint = Orange
-                )
+                Icon(Icons.Default.MusicNote, contentDescription = null, tint = Orange)
             }
         }
 
         Spacer(Modifier.width(13.dp))
 
         Column(Modifier.weight(1f)) {
-            Text(
-                track.title,
-                color = White,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                track.artist,
-                color = Silver,
-                fontSize = 12.sp,
-                maxLines = 1
-            )
-            Text(
-                "${formatTime(track.duration)} • ${track.source}",
-                color = Silver.copy(alpha = 0.65f),
-                fontSize = 10.sp
-            )
+            Text(track.title, color = White, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.artist, color = Silver, fontSize = 12.sp, maxLines = 1)
+            Text("${formatTime(track.duration)} • ${track.source}", color = Silver.copy(alpha = 0.65f), fontSize = 10.sp)
         }
 
-        Icon(
-            Icons.Default.PlayArrow,
-            contentDescription = "Reproduzir",
-            tint = Orange,
-            modifier = Modifier.size(29.dp)
-        )
+        Icon(Icons.Default.PlayArrow, contentDescription = "Reproduzir", tint = Orange, modifier = Modifier.size(29.dp))
     }
 }
 
@@ -953,52 +898,30 @@ fun EqualizerScreen(
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        Text(
-            "Equalizador",
-            color = White,
-            fontSize = 29.sp,
-            fontWeight = FontWeight.Bold
-        )
-
+        Text("Equalizador", color = White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
         Text("Personalize seu som", color = Silver)
 
         Spacer(Modifier.height(25.dp))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Panel)
-        ) {
+        Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
             Column(Modifier.padding(20.dp)) {
-                Text(
-                    "EQUALIZAÇÃO DE ÁUDIO",
-                    color = Orange,
-                    fontWeight = FontWeight.Bold
-                )
-
+                Text("EQUALIZAÇÃO DE ÁUDIO", color = Orange, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
-
                 Text(
                     if (audioSessionId != 0) "Sessão de áudio ativa detetada! Puxe os controlos abaixo."
                     else "Reproduza uma música primeiro para ativar os efeitos de equalização do aparelho.",
                     color = Silver
                 )
-
                 Spacer(Modifier.height(15.dp))
-
                 Button(
                     onClick = {
                         val activeSession = if (audioSessionId != 0) audioSessionId else 1
                         onEqualizer(activeSession)
                         enabled = true
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Orange
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Orange)
                 ) {
-                    Text(
-                        if (enabled) "Equalizador ativado"
-                        else "Ativar equalizador",
-                        color = Black
-                    )
+                    Text(if (enabled) "Equalizador ativado" else "Ativar equalizador", color = Black)
                 }
             }
         }
