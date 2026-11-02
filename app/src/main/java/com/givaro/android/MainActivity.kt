@@ -64,7 +64,6 @@ data class GivaroTrack(
     val source: String = "Givaro Commercial Cloud"
 )
 
-// Repositório Comercial Global Integrado
 private val givaroCommercialRepository: List<GivaroTrack> = listOf(
     GivaroTrack(
         id = "civ_1",
@@ -94,76 +93,6 @@ private val givaroCommercialRepository: List<GivaroTrack> = listOf(
         uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"),
         artwork = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&auto=format&fit=crop&q=80",
         duration = 182000L,
-        source = "Givaro Commercial"
-    ),
-    GivaroTrack(
-        id = "civ_4",
-        title = "Dura",
-        artist = "Daddy Yankee",
-        album = "Single",
-        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"),
-        artwork = "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80",
-        duration = 200000L,
-        source = "Givaro Commercial"
-    ),
-    GivaroTrack(
-        id = "civ_5",
-        title = "Shape of You",
-        artist = "Ed Sheeran",
-        album = "Divide",
-        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"),
-        artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
-        duration = 263000L,
-        source = "Givaro Commercial"
-    ),
-    GivaroTrack(
-        id = "civ_6",
-        title = "Blinding Lights",
-        artist = "The Weeknd",
-        album = "After Hours",
-        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"),
-        artwork = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
-        duration = 200000L,
-        source = "Givaro Commercial"
-    ),
-    GivaroTrack(
-        id = "civ_7",
-        title = "As It Was",
-        artist = "Harry Styles",
-        album = "Harry's House",
-        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"),
-        artwork = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&auto=format&fit=crop&q=80",
-        duration = 167000L,
-        source = "Givaro Commercial"
-    ),
-    GivaroTrack(
-        id = "civ_8",
-        title = "Wake Me Up",
-        artist = "Avicii",
-        album = "True",
-        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"),
-        artwork = "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&auto=format&fit=crop&q=80",
-        duration = 249000L,
-        source = "Givaro Commercial"
-    ),
-    GivaroTrack(
-        id = "civ_9",
-        title = "Titanium",
-        artist = "David Guetta ft. Sia",
-        album = "Nothing but the Beat",
-        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"),
-        artwork = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
-        duration = 245000L,
-        source = "Givaro Commercial"
-    ),
-    GivaroTrack(
-        id = "civ_10",
-        title = "Believer",
-        artist = "Imagine Dragons",
-        album = "Evolve",
-        uri = Uri.parse("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"),
-        artwork = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
-        duration = 204000L,
         source = "Givaro Commercial"
     )
 )
@@ -468,7 +397,7 @@ fun GivaroApp(
                         },
                         onRefresh = { loadLocalMusic() }
                     )
-                    3 -> StreamingWebViewScreen(controller = controller)
+                    3 -> MaskedStreamingScreen(controller = controller)
                     4 -> EqualizerScreen(
                         controller = controller,
                         onEqualizer = onEqualizer
@@ -603,15 +532,6 @@ fun PlayerScreen(
                 Icon(Icons.Default.SkipNext, contentDescription = "Próxima", tint = White, modifier = Modifier.size(38.dp))
             }
         }
-
-        Spacer(Modifier.height(20.dp))
-
-        Text(
-            "GIVARO • PREMIUM AUDIO",
-            color = Silver.copy(alpha = 0.5f),
-            fontSize = 10.sp,
-            letterSpacing = 2.sp
-        )
     }
 }
 
@@ -622,7 +542,6 @@ fun SearchScreen(
     onPlay: (GivaroTrack) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    var statusText by remember { mutableStateOf("Repositório Comercial Ativo") }
 
     Column(
         Modifier
@@ -630,7 +549,7 @@ fun SearchScreen(
             .padding(20.dp)
     ) {
         Text("Descobrir", color = White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
-        Text("Busca no Repositório Comercial", color = Silver)
+        Text("Repositório Comercial", color = Silver)
 
         Spacer(Modifier.height(20.dp))
 
@@ -638,7 +557,6 @@ fun SearchScreen(
             value = query,
             onValueChange = { 
                 query = it
-                // Filtragem em tempo real à medida que o utilizador escreve
                 val cleaned = it.trim().lowercase()
                 val filtered = if (cleaned.isBlank()) {
                     givaroCommercialRepository
@@ -650,18 +568,8 @@ fun SearchScreen(
                 onResults(filtered)
             },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Ex: Daddy Yankee, Ed Sheeran, Avicii...") },
+            placeholder = { Text("Ex: Daddy Yankee...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = {
-                        query = ""
-                        onResults(givaroCommercialRepository)
-                    }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Limpar")
-                    }
-                }
-            },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = White,
@@ -671,15 +579,7 @@ fun SearchScreen(
             )
         )
 
-        Spacer(Modifier.height(15.dp))
-
-        if (statusText.isNotEmpty()) {
-            Text(statusText, color = Orange, fontSize = 12.sp)
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Text("MÚSICAS DO REPOSITÓRIO", color = Silver, fontSize = 11.sp, letterSpacing = 2.sp)
+        Spacer(Modifier.height(20.dp))
 
         LazyColumn {
             items(results, key = { it.id }) { track ->
@@ -709,7 +609,7 @@ fun LibraryScreen(
         ) {
             Column {
                 Text("Biblioteca", color = White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
-                Text("${tracks.size} faixas disponíveis", color = Silver)
+                Text("${tracks.size} faixas", color = Silver)
             }
 
             IconButton(onClick = onRefresh) {
@@ -739,84 +639,136 @@ fun LibraryScreen(
     }
 }
 
+// ABA STREAMING COM MOTOR WEB MASCARADO DO YOUTUBE
 @Composable
-fun StreamingWebViewScreen(controller: MediaController?) {
-    var selectedUrl by remember { mutableStateOf("https://open.spotify.com") }
+fun MaskedStreamingScreen(controller: MediaController?) {
+    var isPlayingWeb by remember { mutableStateOf(false) }
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
-    val platforms = listOf(
-        Triple("Spotify", "https://open.spotify.com", Icons.Default.MusicNote),
-        Triple("YouTube Music", "https://music.youtube.com", Icons.Default.PlayArrow),
-        Triple("Amazon Music", "https://music.amazon.com", Icons.Default.Cloud),
-        Triple("Apple Music", "https://music.apple.com", Icons.Default.Star),
-        Triple("YouTube", "https://www.youtube.com", Icons.Default.VideoLibrary)
-    )
-
-    LaunchedEffect(selectedUrl) {
+    LaunchedEffect(Unit) {
         controller?.pause()
     }
 
     Column(
         Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(Black)
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Streaming", color = White, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Text("Acesso direto aos seus serviços web favoritos", color = Silver, fontSize = 12.sp)
-
-        Spacer(Modifier.height(12.dp))
-
         Row(
-            Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            platforms.forEach { (name, url, icon) ->
-                val isSelected = selectedUrl == url
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { 
-                        controller?.pause()
-                        selectedUrl = url 
-                    },
-                    label = { Text(name) },
-                    leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Orange,
-                        selectedLabelColor = Black,
-                        containerColor = Panel,
-                        labelColor = White
-                    )
-                )
+            Column {
+                Text("GIVARO", color = Orange, fontSize = 27.sp, fontWeight = FontWeight.Black)
+                Text("WEB ENGINE MASQUERADE", color = Silver, fontSize = 10.sp, letterSpacing = 3.sp)
             }
+            Icon(Icons.Default.Language, contentDescription = null, tint = Orange)
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(30.dp))
 
         Box(
             Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Panel)
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(28.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFF292D34), Color(0xFF111318), Color(0xFF3A2419))
+                    ),
+                    RoundedCornerShape(28.dp)
+                ),
+            contentAlignment = Alignment.Center
         ) {
+            // WebView invisível (1x1px) que funciona como motor de som oculto do YouTube
             AndroidView(
-                factory = { context ->
-                    WebView(context).apply {
-                        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        layoutParams = ViewGroup.LayoutParams(1, 1)
                         settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
+                        settings.mediaPlaybackRequiresUserGesture = false
                         webViewClient = WebViewClient()
-                        loadUrl(selectedUrl)
+
+                        val maskedHtml = """
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <script src="https://www.youtube.com/iframe_api"></script>
+                                <script>
+                                    var player;
+                                    function onYouTubeIframeAPIReady() {
+                                        player = new YT.Player('yt-engine', {
+                                            height: '1',
+                                            width: '1',
+                                            videoId: 'jfKfPfyJRdk',
+                                            playerVars: { 'autoplay': 0, 'controls': 0, 'disablekb': 1 }
+                                        });
+                                    }
+                                    function playMasked() { if (player && player.playVideo) player.playVideo(); }
+                                    function pauseMasked() { if (player && player.pauseVideo) player.pauseVideo(); }
+                                </script>
+                            </head>
+                            <body style="background:black;margin:0;">
+                                <div id="yt-engine"></div>
+                            </body>
+                            </html>
+                        """.trimIndent()
+
+                        loadDataWithBaseURL("https://www.youtube.com", maskedHtml, "text/html", "UTF-8", null)
+                        webViewRef = this
                     }
                 },
-                update = { webView ->
-                    if (webView.url != selectedUrl) {
-                        webView.loadUrl(selectedUrl)
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.size(1.dp)
             )
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.MusicNote, contentDescription = null, tint = Orange, modifier = Modifier.size(80.dp))
+                Spacer(Modifier.height(12.dp))
+                Text("GIVARO SECURE AUDIO", color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Motor YouTube Camuflado", color = Silver, fontSize = 12.sp)
+            }
         }
+
+        Spacer(Modifier.height(40.dp))
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilledIconButton(
+                onClick = {
+                    webViewRef?.evaluateJavascript("playMasked();", null)
+                    isPlayingWeb = true
+                },
+                modifier = Modifier.size(76.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Orange)
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = "Tocar", tint = Black, modifier = Modifier.size(42.dp))
+            }
+
+            FilledIconButton(
+                onClick = {
+                    webViewRef?.evaluateJavascript("pauseMasked();", null)
+                    isPlayingWeb = false
+                },
+                modifier = Modifier.size(76.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Panel)
+            ) {
+                Icon(Icons.Default.Pause, contentDescription = "Pausar", tint = Orange, modifier = Modifier.size(42.dp))
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            if (isPlayingWeb) "Status: A transmitir via motor mascarado" else "Status: Em pausa",
+            color = if (isPlayingWeb) Orange else Silver,
+            fontSize = 12.sp
+        )
     }
 }
 
@@ -891,8 +843,8 @@ fun EqualizerScreen(
                 Text("EQUALIZAÇÃO DE ÁUDIO", color = Orange, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    if (audioSessionId != 0) "Sessão de áudio ativa detetada! Puxe os controlos abaixo."
-                    else "Reproduza uma música primeiro para ativar os efeitos de equalização do aparelho.",
+                    if (audioSessionId != 0) "Sessão de áudio ativa detetada!"
+                    else "Reproduza uma música local ou do repositório para ativar os efeitos.",
                     color = Silver
                 )
                 Spacer(Modifier.height(15.dp))
@@ -908,23 +860,13 @@ fun EqualizerScreen(
                 }
             }
         }
-
-        Spacer(Modifier.height(20.dp))
-
-        Text(
-            "Nota: O equalizador depende das APIs de efeitos sonoros nativas do Android integradas no seu dispositivo.",
-            color = Silver,
-            fontSize = 12.sp
-        )
     }
 }
 
 private fun formatTime(milliseconds: Long): String {
     if (milliseconds <= 0L) return "0:00"
-
     val totalSeconds = milliseconds / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-
     return "%d:%02d".format(minutes, seconds)
 }
